@@ -1,7 +1,7 @@
 ---
 name: backend-test-generator
 description: Takes a list of component files and generates a complete, green Vitest test suite. Domain files get pure unit tests; use cases get integration tests with mocks only at the repository boundary. Every domain invariant and error path gets its own it() block. Never mixes unit and integration in the same file.
-model: inherit
+model: sonnet
 color: green
 tools: Read, Grep, Glob, Edit, Write, Bash
 ---

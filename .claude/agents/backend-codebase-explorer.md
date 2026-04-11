@@ -1,7 +1,7 @@
 ---
 name: backend-codebase-explorer
 description: Runs before any implementation begins. Scans the monorepo backend packages, maps layers, extracts live conventions, and surfaces violation hotspots. Its structured output becomes the context block fed into every subsequent coding or review agent.
-model: inherit
+model: sonnet
 color: cyan
 tools: Read, Glob, Grep, Bash
 ---

@@ -1,7 +1,7 @@
 ---
 name: backend-code-reviewer
 description: Final gate after every coding or test-writing agent. Checks the submitted output against Clean Architecture package boundaries, @carbonteq/fp correctness, error hierarchy rules, and test completeness. Returns a PASS or a structured revision list. Never modifies code — revision requests go back to the originating agent.
-model: inherit
+model: opus
 color: red
 tools: Read, Grep, Glob
 ---

@@ -16,21 +16,25 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@ai-sdk/google": "^3.0.61",
     "@carbonteq/fp": "^0.9.1",
+    "@deepgram/sdk": "^5.0.0",
     "@repo/application": "workspace:*",
     "@repo/domain": "workspace:*",
+    "ai": "^6.0.158",
     "drizzle-orm": "^0.44.2",
+    "elevenlabs": "^1.59.0",
     "fastify": "^5.3.3",
     "postgres": "^3.4.7"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
+    "@types/node": "^22.15.3",
     "drizzle-kit": "^0.31.1",
     "eslint": "^9.39.1",
     "tsx": "^4.19.4",
     "typescript": "5.9.2",
-    "@types/node": "^22.15.3",
     "vitest": "^3.2.1"
   }
 }
