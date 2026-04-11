@@ -6,6 +6,11 @@
       "sourceType": "github",
       "computedHash": "81af098a4ce6f0e323c1bd02b8e79df3bbaed57cbf1c4060f58ddc95de5545a1"
     },
+    "chat-ui": {
+      "source": "inference-sh/agent-skills",
+      "sourceType": "github",
+      "computedHash": "5628ac2ae8967ab7ff24ddfd8386ee746cd04d4ec907407690daa9f371b9df6b"
+    },
     "turborepo": {
       "source": "vercel/turborepo",
       "sourceType": "github",

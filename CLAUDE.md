@@ -4,6 +4,13 @@ Guidance for Claude Code in this repository.
 
 > **Scope notice:** The workflow rules, skills, and agents described in this file apply to **backend work only** (`packages/domain/`, `packages/application/`, `apps/backend/`). Frontend apps (`apps/web/`, `apps/docs/`) and UI packages (`packages/ui/`) have their own conventions and are **not** governed by these rules.
 
+## Frontend
+
+For frontend work (`apps/web/`, `apps/docs/`, `packages/ui/`), use these skills:
+- `/ui-ux-pro-max` — UI/UX design intelligence: styles, color palettes, font pairings, UX guidelines
+- `/frontend-design` — production-grade frontend interfaces with high design quality
+- `/chat-ui` — chat UI building blocks (use when the task involves AI chatbot or messaging interfaces)
+
 ## Commands
 
 ```bash
