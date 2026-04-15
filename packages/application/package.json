@@ -19,7 +19,7 @@
   "dependencies": {
     "@carbonteq/fp": "^0.9.1",
     "@repo/domain": "workspace:*",
-    "zod": "^3.25.20"
+    "zod": "^4.0.14"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",

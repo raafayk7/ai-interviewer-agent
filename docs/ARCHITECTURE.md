@@ -2,7 +2,7 @@
 
 ## 1. Product Vision
 
-An AI-powered technical screening interviewer that conducts 15-minute voice-based screening interviews on behalf of recruiters. The system takes a Job Description (JD), candidate CV, and client-specific instructions, then autonomously conducts a natural voice conversation with the candidate. After the interview concludes, the system evaluates the full transcript and generates a structured screening report.
+An AI-powered technical screening interviewer that conducts short voice-based screening interviews (typically ~15 minutes) on behalf of recruiters. The system takes a Job Description (JD), candidate CV, and client-specific instructions, then autonomously conducts a natural voice conversation with the candidate. After the interview concludes, the system evaluates the full transcript and generates a structured screening report.
 
 **This is a screening tool, not a replacement for line manager interviews.** It handles the initial filter — assessing communication, basic technical fit, and role alignment — so human recruiters spend their time only on candidates worth advancing.
 
@@ -20,7 +20,7 @@ Recruiter uploads JD + CV + instructions
             │
             ▼
 ┌───────────────────────────────────────┐
-│         15-Minute Voice Interview      │
+│        Voice Interview (~15 min)       │
 │                                        │
 │  Candidate speaks                      │
 │       ↓                                │
@@ -79,8 +79,9 @@ Recruiter uploads JD + CV + instructions
 │  Infrastructure Layer                                        │
 │  - Drizzle ORM (PostgreSQL) — persistence                   │
 │  - Deepgram SDK — speech-to-text                            │
-│  - AI SDK + Gemini — interview agent & evaluation           │
+│  - AI SDK + Gemini — interview agent, evaluation, doc OCR   │
 │  - ElevenLabs SDK — text-to-speech                          │
+│  - File Storage adapter (Local → S3/R2 later)               │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -160,6 +161,7 @@ Note: These have now been installed in apps/backend
 | **AI SDK Google Provider** | Gemini integration for AI SDK | `@ai-sdk/google` |
 | **Deepgram SDK** | Real-time speech-to-text (WebSocket streaming) | `@deepgram/sdk` |
 | **ElevenLabs SDK** | Text-to-speech (streaming audio generation) | `elevenlabs` |
+| **Langfuse** | LLM observability (tracing, cost, prompt versioning) | `langfuse` + `@langfuse/otel` |
 
 ### 4.3 API Keys Required
 
@@ -168,6 +170,7 @@ Note: These have now been installed in apps/backend
 | Google AI Studio (Gemini) | `GOOGLE_GENERATIVE_AI_API_KEY` | Available |
 | Deepgram | `DEEPGRAM_API_KEY` | Need to sign up (deepgram.com) |
 | ElevenLabs | `ELEVENLABS_API_KEY` | Need to sign up (elevenlabs.io) |
+| Langfuse | `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_BASE_URL` | Need to sign up (langfuse.com, free tier) |
 
 ### 4.4 Why NOT PersonaPlex
 
@@ -181,6 +184,87 @@ NVIDIA PersonaPlex was evaluated and rejected for these reasons:
 6. **English only** — no multilingual support.
 
 The sandwich architecture (STT → Gemini → TTS) provides full content control, unlimited context, tool calling, and scales on standard infrastructure.
+
+### 4.5 Document Ingestion (OCR / Extraction)
+
+Uploaded CVs and JDs are parsed using **Gemini's native multimodal capabilities via AI SDK**, not a separate OCR service.
+
+- Gemini 2.5 Pro accepts PDF and image input directly
+- A single `generateObject` call with a Zod schema produces typed, structured extraction
+- Handles both text PDFs and scanned/image-based documents in one pass
+- No Tesseract, Textract, or separate OCR pipeline needed
+
+Extraction happens once at upload time and the structured result is persisted alongside the raw file.
+
+### 4.6 Observability (Langfuse)
+
+Every AI interaction is traced for debugging, cost tracking, and quality monitoring. Langfuse is the chosen observability platform — free tier is generous, self-hostable if needed later.
+
+**What gets traced:**
+- Every LLM call (interview agent turns, evaluation passes, document extraction)
+- Full input/output including system prompts, tool calls, and tool results
+- Latency, token counts, and cost per call
+- Deepgram STT and ElevenLabs TTS calls (as custom spans within the same trace)
+- Per-interview session grouping (all turns in one trace)
+- Custom metadata (interview ID, candidate ID, JD ID) for filtering
+
+**Trace structure per interview:**
+```
+Trace: Interview session {interviewId}
+├── Span: Agent turn 1
+│   ├── Span: Deepgram STT        (duration, audio_seconds, cost)
+│   ├── Generation: Gemini agent  (native — prompts, tokens, tool calls)
+│   └── Span: ElevenLabs TTS      (character_count, audio_duration, cost)
+├── Span: Agent turn 2
+│   └── ...
+└── Generation: Evaluation pass   (native — transcript in, report out)
+```
+
+**Non-LLM spans (Deepgram, ElevenLabs):**
+Langfuse is optimized for LLM traces but supports arbitrary OpenTelemetry spans. Deepgram and ElevenLabs are instrumented as custom spans — you get latency, cost, and failure visibility in the unified trace view, but not the rich LLM-specific UI (token diffs, prompt versioning). This is acceptable for our needs; if we outgrow it for infra-level metrics, we add a separate Grafana/Prometheus stack later without changing the LLM observability.
+
+**Why it matters here:**
+- Debugging agent behavior post-hoc (why did it ask that question? why did it end early?)
+- Tracking cost per interview to validate unit economics
+- Iterating on system prompts with versioning and comparison
+- Adding evaluation scores (e.g. "did the agent cover all must-ask questions?") over time
+
+**Integration:**
+- AI SDK has native OpenTelemetry support
+- Langfuse provides an OTel exporter — `@langfuse/otel` package
+- One-time setup in the backend bootstrap; all AI SDK calls are traced automatically
+
+**Env vars required:**
+```
+LANGFUSE_PUBLIC_KEY=...
+LANGFUSE_SECRET_KEY=...
+LANGFUSE_BASE_URL=https://cloud.langfuse.com  # or self-hosted URL
+```
+
+### 4.7 File Storage Abstraction
+
+File storage is abstracted via a port/adapter pattern so we can swap backends without touching use cases.
+
+**Port** (in application layer):
+```typescript
+interface IFileStorageService {
+  upload(file: Buffer, key: string, contentType: string): Promise<Result<FileRef, StorageError>>;
+  download(key: string): Promise<Result<Buffer, StorageError>>;
+  delete(key: string): Promise<Result<void, StorageError>>;
+  getSignedUrl(key: string, expiresInSec: number): Promise<Result<string, StorageError>>;
+}
+```
+
+**Adapters** (in infrastructure layer):
+- **Dev / current:** `LocalFileStorageService` — writes to a configured directory on disk, serves via signed URLs from the backend
+- **Future production:** `S3FileStorageService` / `R2FileStorageService` — swap with zero use-case changes
+
+**Files stored:**
+- Uploaded CVs (PDF/image)
+- Uploaded JDs (PDF/text)
+- Interview audio recordings (future — for QA and dispute resolution)
+
+Storage keys follow a predictable pattern: `{entity}/{id}/{filename}` (e.g. `interviews/abc-123/cv.pdf`).
 
 ## 5. Key Design Decisions
 
@@ -201,7 +285,25 @@ The interviewer is an **AI SDK agent** with a rich system prompt and tool defini
 - `take_note` — log an observation for the final report
 - `end_interview` — wrap up when time is up or all topics covered
 
-### 5.2 Post-Interview Evaluation
+### 5.2 Interview Duration (Soft Target, Not Hard Cap)
+
+Screening interviews **typically** run ~15 minutes, but this is a target, not a rule. The agent uses judgment:
+
+- **Target duration** (`targetDurationMinutes`, default 15) — what the agent aims for
+- **Hard ceiling** (`maxDurationMinutes`, default 25) — enforced by the system, agent must wrap up
+
+The agent may end earlier if:
+- All must-ask questions are covered and signal is clear
+- Candidate is clearly not a fit (save everyone's time)
+- Candidate requests to end
+
+The agent may run longer (up to the hard ceiling) if:
+- Candidate is on a strong topic worth exploring
+- Critical must-ask questions remain uncovered
+
+The hard ceiling exists purely as a safety net (runaway conversations, stuck agents). The normal signal is the target, communicated to the agent via system prompt plus periodic time-remaining updates injected into context.
+
+### 5.3 Post-Interview Evaluation
 
 A separate Gemini call (not the same agent) receives:
 - The full transcript
@@ -215,7 +317,7 @@ And produces a **structured report** (via AI SDK `generateObject`):
 - Key strengths and concerns
 - Suggested follow-up questions for the line manager interview
 
-### 5.3 Interview State Machine
+### 5.4 Interview State Machine
 
 ```
 CREATED → SCHEDULED → IN_PROGRESS → COMPLETED → EVALUATED
@@ -229,7 +331,7 @@ CREATED → SCHEDULED → IN_PROGRESS → COMPLETED → EVALUATED
 - **COMPLETED** — session ended, transcript saved
 - **EVALUATED** — report generated and available
 
-### 5.4 Real-Time Communication
+### 5.5 Real-Time Communication
 
 - **Browser ↔ Backend:** WebSocket for bidirectional audio streaming
 - **Backend → Deepgram:** WebSocket for real-time STT
@@ -265,7 +367,8 @@ Report
 
 InterviewPlan
 ├── topics: PlannedTopic[]
-├── totalDurationMinutes: 15
+├── targetDurationMinutes: number   // soft target, default 15
+├── maxDurationMinutes: number      // hard ceiling, default 25
 └── mustAskQuestions: string[]
 
 PlannedTopic
@@ -279,12 +382,16 @@ PlannedTopic
 
 ### Phase 1 — Domain & Application Layer
 - Define entities: Interview, Report
-- Define value objects: JobDescription, CandidateInfo, InterviewPlan, TopicScore
+- Define value objects: JobDescription, CandidateInfo, InterviewPlan, TopicScore, FileRef
 - Define repository interfaces
-- Implement use cases: CreateInterview, GenerateInterviewPlan, EvaluateTranscript, GenerateReport
+- Define service ports: `IFileStorageService`, `IDocumentExtractionService`
+- Implement use cases: UploadCandidateDocuments, CreateInterview, GenerateInterviewPlan, EvaluateTranscript, GenerateReport
 
 ### Phase 2 — Infrastructure Layer
 - Drizzle schema and migrations
+- `LocalFileStorageService` adapter (disk-based, configurable root path)
+- `GeminiDocumentExtractionService` adapter (AI SDK multimodal extraction)
+- Langfuse OTel setup in backend bootstrap — all AI SDK calls traced automatically
 - Repository implementations
 - AI SDK agent setup (Gemini provider, interview system prompt, tools)
 - Evaluation service (structured output for reports)

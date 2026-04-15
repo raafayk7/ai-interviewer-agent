@@ -19,12 +19,17 @@
     "@ai-sdk/google": "^3.0.61",
     "@carbonteq/fp": "^0.9.1",
     "@deepgram/sdk": "^5.0.0",
+    "@langfuse/otel": "^5.1.0",
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/auto-instrumentations-node": "^0.72.0",
+    "@opentelemetry/sdk-node": "^0.214.0",
     "@repo/application": "workspace:*",
     "@repo/domain": "workspace:*",
     "ai": "^6.0.158",
     "drizzle-orm": "^0.44.2",
     "elevenlabs": "^1.59.0",
     "fastify": "^5.3.3",
+    "langfuse": "^3.38.20",
     "postgres": "^3.4.7"
   },
   "devDependencies": {
