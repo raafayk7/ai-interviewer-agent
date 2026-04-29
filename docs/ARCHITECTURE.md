@@ -147,7 +147,7 @@ The interview voice pipeline uses a **sandwich architecture** (STT → LLM → T
 | Fastify | 5 | HTTP framework |
 | Drizzle ORM | 0.44 | Database ORM |
 | PostgreSQL | — | Primary database |
-| Zod | 3.25 | Validation / DTOs |
+| Zod | 4 | Validation / DTOs |
 | @carbonteq/fp | 0.9.1 | Result/Option FP primitives |
 | Vitest | 3.2 | Testing |
 | Next.js | 16 | Frontend framework |
@@ -380,40 +380,68 @@ PlannedTopic
 
 ## 7. Implementation Phases
 
-### Phase 1 — Domain & Application Layer
-- Define entities: Interview, Report
-- Define value objects: JobDescription, CandidateInfo, InterviewPlan, TopicScore, FileRef
-- Define repository interfaces
-- Define service ports: `IFileStorageService`, `IDocumentExtractionService`
-- Implement use cases: UploadCandidateDocuments, CreateInterview, GenerateInterviewPlan, EvaluateTranscript, GenerateReport
+The phases follow a **vertical-slice strategy**: prove the highest-risk component (the voice loop) works in isolation before building the rest of the backend around it. Each phase produces something runnable, not a half-stack of layers waiting on the next.
 
-### Phase 2 — Infrastructure Layer
+### Phase 1 — Domain Foundation + Minimal Application
+Goal: have the persistence-shaped objects ready, no AI yet.
+- Entities: Interview, Report
+- Value objects: JobDescription, CandidateInfo, InterviewPlan, TopicScore, FileRef
+- Repository interfaces
+- Service ports: `IFileStorageService`, `IDocumentExtractionService`
+- Use cases (only the ones that don't need AI): `UploadCandidateDocuments`, `CreateInterview`
+
+### Phase 2 — Persistence & Storage
+Goal: data lives somewhere, files upload, traces flow.
 - Drizzle schema and migrations
-- `LocalFileStorageService` adapter (disk-based, configurable root path)
-- `GeminiDocumentExtractionService` adapter (AI SDK multimodal extraction)
-- Langfuse OTel setup in backend bootstrap — all AI SDK calls traced automatically
 - Repository implementations
-- AI SDK agent setup (Gemini provider, interview system prompt, tools)
-- Evaluation service (structured output for reports)
+- `LocalFileStorageService` adapter (disk-based, configurable root path)
+- Langfuse OTel setup in backend bootstrap
 
-### Phase 3 — Voice Pipeline
+### Phase 3 — Document Extraction & Plan Generation
+Goal: a JD + CV in, a structured `InterviewPlan` out. First AI surface.
+- `GeminiDocumentExtractionService` adapter (AI SDK multimodal `generateObject`)
+- `GenerateInterviewPlan` use case (LLM-driven plan synthesis)
+- Persist extracted JD/CV alongside the raw file
+
+### Phase 4 — Voice Pipeline Spike (Hardcoded Script)
+Goal: prove the hardest mechanical part works before the agent is involved. **De-risks the project.**
 - Deepgram STT integration (WebSocket streaming)
 - ElevenLabs TTS integration (streaming audio)
-- WebSocket server for browser ↔ backend audio
-- ConductInterview use case (orchestrates STT → Agent → TTS loop)
+- Browser ↔ backend WebSocket audio relay
+- Drive it with a fixed script of 3–4 questions, no LLM in the loop
+- Measure real end-to-end latency under realistic conditions
 
-### Phase 4 — Presentation Layer
-- REST endpoints (CRUD for interviews, reports)
+### Phase 5 — Agent Integration
+Goal: replace the script with the real interviewer.
+- AI SDK agent setup (Gemini provider, system prompt assembly, tools: `next_question` / `score_answer` / `take_note` / `end_interview`)
+- `ConductInterview` use case orchestrating STT → Agent → TTS
+- Periodic time-remaining context injection
+- Per-turn Langfuse trace structure verified
+
+### Phase 6 — Evaluation & Reporting
+Goal: full backend loop closed.
+- Evaluation service (Gemini `generateObject` over transcript + JD + CV + rubric)
+- `EvaluateTranscript` and `GenerateReport` use cases
+- Report persistence + retrieval
+
+### Phase 7 — Presentation Layer
+- REST endpoints (interviews CRUD, reports)
 - WebSocket handlers for interview sessions
-- Error mapping and authentication
+- HTTP error mapping
+- Auth (recruiter auth + candidate signed-link access)
 
-### Phase 5 — Frontend
-- Recruiter dashboard (create interview, upload JD/CV, view reports)
-- Candidate interview page (audio UI, connection status)
+### Phase 8 — Recruiter Frontend
+- Recruiter dashboard: create interview, upload JD/CV, view interview status
 - Report viewer
 
-### Phase 6 — Polish
-- Interview time management (warnings, graceful wrap-up)
-- Retry/reconnection handling for voice pipeline
-- Rate limiting and concurrent interview management
-- Monitoring and logging
+### Phase 9 — Candidate Frontend
+- Candidate interview page (audio capture/playback, connection status)
+- Pre-interview check (mic permission, network)
+
+### Phase 10 — Resilience & Operational Hardening
+**Not "polish" — these are correctness requirements for any real interview.**
+- WebSocket reconnection / mid-call recovery (a dropped session must not destroy a 10-minute interview)
+- Hard ceiling enforcement and graceful wrap-up
+- Retry policies and circuit breakers around Deepgram / ElevenLabs / Gemini
+- Rate limiting and concurrent-session management
+- PII / retention policy on transcripts and audio
