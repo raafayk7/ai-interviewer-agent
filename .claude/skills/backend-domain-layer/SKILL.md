@@ -1,6 +1,7 @@
 ---
 name: backend-domain-layer
 description: Write, review, or reason about domain layer code — entities, value objects, domain errors, domain events, domain services, and repository interfaces. Use this skill when the user asks to create or modify an entity, add a domain method, define a value object, write a domain error, design a repository interface, or check if something belongs in the domain. Trigger proactively whenever the user is touching packages/domain/.
+user-invocable: true
 version: 1.0.0
 ---
 

@@ -1,6 +1,7 @@
 ---
 name: backend-infrastructure-layer
 description: Write, review, or reason about infrastructure layer code — repository implementations, DAOs, Drizzle schema/adapters, infrastructure services (email, storage, external APIs), event handlers, and error translation. Use this skill when the user asks to implement a repository, write a DAO query, add an infrastructure service, handle a domain event, or wire up persistence. Trigger proactively whenever the user is touching apps/backend/src/infrastructure/.
+user-invocable: true
 version: 1.0.0
 ---
 

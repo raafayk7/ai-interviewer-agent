@@ -1,6 +1,7 @@
 ---
 name: backend-presentation-layer
 description: Write, review, or reason about presentation layer code — controllers, routes, error mapping, response formatting, authentication/authorization checks, and DTO validation at the HTTP boundary. Use this skill when the user asks to create a controller, add a route, map service errors to HTTP responses, format API responses, or check authorization. Trigger proactively whenever the user is touching apps/backend/src/presentation/.
+user-invocable: true
 version: 1.0.0
 ---
 
