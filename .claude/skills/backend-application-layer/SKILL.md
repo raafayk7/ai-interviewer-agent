@@ -1,6 +1,7 @@
 ---
 name: backend-application-layer
 description: Write, review, or reason about application layer code — use cases, DTOs, query services, and application services. Use this skill when the user asks to create a use case, add a DTO, write a query service, coordinate repositories, handle transactions, or check if orchestration logic is correct. Trigger proactively whenever the user is touching packages/application/.
+user-invocable: true
 version: 1.0.0
 ---
 
