@@ -11,6 +11,12 @@
       "sourceType": "github",
       "computedHash": "5628ac2ae8967ab7ff24ddfd8386ee746cd04d4ec907407690daa9f371b9df6b"
     },
+    "langfuse": {
+      "source": "langfuse/skills",
+      "sourceType": "github",
+      "skillPath": "skills/langfuse/SKILL.md",
+      "computedHash": "f87832728e8499304a0abfbe742e520a3baf8308de9b7adfffbdf910c41e0ef6"
+    },
     "turborepo": {
       "source": "vercel/turborepo",
       "sourceType": "github",
