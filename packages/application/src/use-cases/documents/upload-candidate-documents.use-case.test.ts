@@ -96,7 +96,8 @@ describe("[Integration] UploadCandidateDocumentsUseCase", () => {
       const useCase = new UploadCandidateDocumentsUseCase(storage);
       await useCase.execute(validInput());
 
-      const firstCallKey: string = uploadFn.mock.calls[0][1];
+      expect(uploadFn.mock.calls[0]).toBeDefined();
+      const firstCallKey = uploadFn.mock.calls[0]![1] as string;
       expect(firstCallKey).toMatch(/^recruiters\/recruiter-001\/uploads\/jd\/\d+-jd\.pdf$/);
     });
 
@@ -117,7 +118,8 @@ describe("[Integration] UploadCandidateDocumentsUseCase", () => {
       const useCase = new UploadCandidateDocumentsUseCase(storage);
       await useCase.execute(validInput());
 
-      const secondCallKey: string = uploadFn.mock.calls[1][1];
+      expect(uploadFn.mock.calls[1]).toBeDefined();
+      const secondCallKey = uploadFn.mock.calls[1]![1] as string;
       expect(secondCallKey).toMatch(/^recruiters\/recruiter-001\/uploads\/cv\/\d+-cv\.pdf$/);
     });
   });

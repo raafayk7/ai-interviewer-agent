@@ -6,5 +6,8 @@ export default defineConfig({
     environment: "node",
     include: ["src/**/*.test.ts"],
     passWithNoTests: true,
+    // DB integration tests share a single Postgres instance.
+    // Running test files in parallel causes TRUNCATE deadlocks across workers.
+    fileParallelism: false,
   },
 });
