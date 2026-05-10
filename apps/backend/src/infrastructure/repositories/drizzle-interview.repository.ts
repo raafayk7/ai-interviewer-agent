@@ -15,6 +15,35 @@ import {
 } from "../persistence/schema/interviews.js";
 import { translatePgError } from "./errors/translate-pg-error.js";
 
+type TranscriptEntrySerialized = InterviewSerialized["transcript"][number];
+type AgentNoteSerialized = InterviewSerialized["notes"][number];
+type AgentInternalScoreSerialized = InterviewSerialized["internalScores"][number];
+type FileRefSerialized = InterviewSerialized["jdFileRef"];
+
+const asDate = (value: Date | string): Date => (value instanceof Date ? value : new Date(value));
+
+const reviveTranscriptEntry = (entry: TranscriptEntrySerialized): TranscriptEntrySerialized => ({
+  ...entry,
+  timestamp: asDate(entry.timestamp),
+});
+
+const reviveAgentNote = (note: AgentNoteSerialized): AgentNoteSerialized => ({
+  ...note,
+  recordedAt: asDate(note.recordedAt),
+});
+
+const reviveAgentInternalScore = (
+  score: AgentInternalScoreSerialized,
+): AgentInternalScoreSerialized => ({
+  ...score,
+  recordedAt: asDate(score.recordedAt),
+});
+
+const reviveFileRef = (fileRef: FileRefSerialized): FileRefSerialized => ({
+  ...fileRef,
+  uploadedAt: asDate(fileRef.uploadedAt),
+});
+
 const rowToSerialized = (row: InterviewRow): InterviewSerialized => ({
   id: row.id,
   recruiterId: row.recruiterId,
@@ -23,9 +52,11 @@ const rowToSerialized = (row: InterviewRow): InterviewSerialized => ({
   candidateInfo: row.candidateInfo,
   clientInstructions: row.clientInstructions,
   interviewPlan: row.interviewPlan,
-  transcript: row.transcript,
-  jdFileRef: row.jdFileRef,
-  cvFileRef: row.cvFileRef,
+  transcript: row.transcript.map(reviveTranscriptEntry),
+  notes: row.notes.map(reviveAgentNote),
+  internalScores: row.internalScores.map(reviveAgentInternalScore),
+  jdFileRef: reviveFileRef(row.jdFileRef),
+  cvFileRef: reviveFileRef(row.cvFileRef),
   scheduledAt: row.scheduledAt,
   startedAt: row.startedAt,
   completedAt: row.completedAt,
@@ -43,6 +74,8 @@ const serializedToInsertRow = (serialized: InterviewSerialized): InterviewInsert
   clientInstructions: serialized.clientInstructions,
   interviewPlan: serialized.interviewPlan,
   transcript: serialized.transcript,
+  notes: serialized.notes,
+  internalScores: serialized.internalScores,
   jdFileRef: serialized.jdFileRef,
   cvFileRef: serialized.cvFileRef,
   scheduledAt: serialized.scheduledAt,
@@ -75,6 +108,8 @@ export class DrizzleInterviewRepository implements IInterviewRepository {
               clientInstructions: insertRow.clientInstructions,
               interviewPlan: insertRow.interviewPlan,
               transcript: insertRow.transcript,
+              notes: insertRow.notes,
+              internalScores: insertRow.internalScores,
               jdFileRef: insertRow.jdFileRef,
               cvFileRef: insertRow.cvFileRef,
               scheduledAt: insertRow.scheduledAt,

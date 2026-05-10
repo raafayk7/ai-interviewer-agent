@@ -1,14 +1,11 @@
 import { EventEmitter } from "node:events";
 import { Result } from "@carbonteq/fp";
-import type {
-  RunScriptedInterviewSessionRuntimeInput,
-  RunScriptedInterviewSessionOutput,
-  ServiceError,
-} from "@repo/application";
+import type { ConductInterviewOutput, ServiceError } from "@repo/application";
 import { describe, expect, it, vi } from "vitest";
 import {
   InterviewSessionController,
-  type RunScriptedInterviewSessionUseCaseLike,
+  type ConductInterviewRuntimeInput,
+  type ConductInterviewUseCaseLike,
   WS_CLOSE,
 } from "./interview-session.controller.js";
 
@@ -31,6 +28,16 @@ class FakeWebSocket extends EventEmitter {
 
 const request = (id: unknown) => ({ params: { id } });
 
+const completedOutput = (interviewId: string): ConductInterviewOutput => ({
+  interviewId,
+  transcript: [],
+  notes: [],
+  internalScores: [],
+  turnsCompleted: 4,
+  endReason: "all_topics_covered",
+  hardCeilingHit: false,
+});
+
 describe("InterviewSessionController", () => {
   it("closes with policy violation when interview id is invalid", async () => {
     const ws = new FakeWebSocket();
@@ -52,7 +59,7 @@ describe("InterviewSessionController", () => {
       buildUseCase: () =>
         ({
           execute: vi.fn().mockResolvedValue(Result.Err(unavailable)),
-        }) as RunScriptedInterviewSessionUseCaseLike,
+        }) as ConductInterviewUseCaseLike,
     });
 
     await controller.handle(ws as never, request("interview-1") as never);
@@ -60,16 +67,30 @@ describe("InterviewSessionController", () => {
     expect(ws.closes).toEqual([{ code: WS_CLOSE.SERVICE_RESTART, reason: "stt down" }]);
   });
 
+  it("maps INTERVIEW_NOT_FOUND to policy violation", async () => {
+    const ws = new FakeWebSocket();
+    const notFound = Object.assign(new Error("Interview foo not found"), {
+      code: "INTERVIEW_NOT_FOUND",
+    }) as ServiceError;
+    const controller = new InterviewSessionController({
+      buildUseCase: () =>
+        ({
+          execute: vi.fn().mockResolvedValue(Result.Err(notFound)),
+        }) as ConductInterviewUseCaseLike,
+    });
+
+    await controller.handle(ws as never, request("foo") as never);
+
+    expect(ws.closes).toEqual([
+      { code: WS_CLOSE.POLICY_VIOLATION, reason: "Interview foo not found" },
+    ]);
+  });
+
   it("sends a completion envelope and closes normally on success", async () => {
     const ws = new FakeWebSocket();
-    const execute = vi.fn(async (input: RunScriptedInterviewSessionRuntimeInput) => {
+    const execute = vi.fn(async (input: ConductInterviewRuntimeInput) => {
       await input.agentAudioOut(new Uint8Array([1, 2, 3]));
-      return Result.Ok({
-        interviewId: input.interviewId,
-        transcript: [],
-        turnsCompleted: 4,
-        scriptVersion: "phase-4-spike-v1",
-      });
+      return Result.Ok(completedOutput(input.interviewId));
     });
     const controller = new InterviewSessionController({
       buildUseCase: () => ({ execute }),
@@ -91,8 +112,11 @@ describe("InterviewSessionController", () => {
       payload: {
         interviewId: "interview-1",
         transcript: [],
+        notes: [],
+        internalScores: [],
         turnsCompleted: 4,
-        scriptVersion: "phase-4-spike-v1",
+        endReason: "all_topics_covered",
+        hardCeilingHit: false,
       },
     });
     expect(ws.closes).toEqual([{ code: WS_CLOSE.NORMAL, reason: "session complete" }]);
@@ -100,18 +124,16 @@ describe("InterviewSessionController", () => {
 
   it("aborts the use case when the socket closes early", async () => {
     const ws = new FakeWebSocket();
-    let capturedInput: RunScriptedInterviewSessionRuntimeInput | undefined;
+    let capturedInput: ConductInterviewRuntimeInput | undefined;
     const execute = vi.fn(
-      (input: RunScriptedInterviewSessionRuntimeInput) =>
-        new Promise<Result<RunScriptedInterviewSessionOutput, ServiceError>>((resolve) => {
+      (input: ConductInterviewRuntimeInput) =>
+        new Promise<Result<ConductInterviewOutput, ServiceError>>((resolve) => {
           capturedInput = input;
           input.abortSignal.addEventListener("abort", () =>
             resolve(
               Result.Ok({
-                interviewId: input.interviewId,
-                transcript: [],
+                ...completedOutput(input.interviewId),
                 turnsCompleted: 0,
-                scriptVersion: "phase-4-spike-v1",
               }),
             ),
           );

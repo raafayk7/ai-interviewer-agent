@@ -3,15 +3,18 @@ import { createGoogleGenerativeAI, type GoogleGenerativeAIProvider } from "@ai-s
 import { ServiceUnavailableError } from "@repo/application";
 
 export const DEFAULT_GEMINI_MODEL = "gemini-2.5-pro";
+export const DEFAULT_GEMINI_AGENT_MODEL = "gemini-2.5-pro";
 
 export interface GeminiProviderConfig {
   readonly apiKey: string;
   readonly defaultModel?: string;
+  readonly defaultAgentModel?: string;
 }
 
 export interface GeminiProviderHandle {
   readonly provider: GoogleGenerativeAIProvider;
   readonly defaultModel: string;
+  readonly defaultAgentModel: string;
 }
 
 export const buildGeminiProvider = (
@@ -24,6 +27,7 @@ export const buildGeminiProvider = (
   return Result.Ok({
     provider: createGoogleGenerativeAI({ apiKey: config.apiKey }),
     defaultModel: config.defaultModel ?? DEFAULT_GEMINI_MODEL,
+    defaultAgentModel: config.defaultAgentModel ?? DEFAULT_GEMINI_AGENT_MODEL,
   });
 };
 
@@ -39,5 +43,6 @@ export const geminiProviderFromEnv = (
   return buildGeminiProvider({
     apiKey,
     defaultModel: env["GEMINI_MODEL"] ?? DEFAULT_GEMINI_MODEL,
+    defaultAgentModel: env["GEMINI_AGENT_MODEL"] ?? DEFAULT_GEMINI_AGENT_MODEL,
   });
 };

@@ -1,11 +1,20 @@
 /**
- * Phase 4 latency harness.
+ * Phase 5 latency harness.
  *
  * Usage:
  *   tsx apps/backend/src/scripts/measure-voice-latency.ts \
  *     --wav ./fixtures/sample-reply.wav \
  *     --interview-id smoke-1 \
  *     --url ws://localhost:3002/interviews/smoke-1/session
+ *
+ * Expects the Phase 5 ConductInterview WebSocket envelope:
+ * `{ "type": "session.completed", "payload": ... }`, with Langfuse spans
+ * rooted at `interview.session.agent`.
+ *
+ * The candidate WAV should contain at least one full utterance per agent turn.
+ * Phase 4's hardcoded script was forgiving; the Phase 5 agent keeps going until
+ * it calls `end_interview`. For smoke testing, prefer a recorded conversation
+ * with 5-8 candidate utterances or expect the harness to hit the hard ceiling.
  *
  * TODO(phase-10): replace heuristic silence detection with explicit server
  * protocol frames such as `{ "type": "tts.end" }`.
@@ -81,8 +90,24 @@ async function main(): Promise<void> {
       return;
     }
 
-    const envelope = JSON.parse(data.toString("utf-8")) as { type?: string };
-    if (envelope.type === "session.completed") {
+    const envelope = JSON.parse(data.toString("utf-8")) as {
+      type: string;
+      payload?: {
+        interviewId: string;
+        turnsCompleted: number;
+        transcript: unknown[];
+        notes: unknown[];
+        internalScores: unknown[];
+        endReason: string | null;
+        hardCeilingHit: boolean;
+      };
+    };
+
+    if (envelope.type === "session.completed" && envelope.payload) {
+      const { turnsCompleted, notes, internalScores, endReason, hardCeilingHit } = envelope.payload;
+      console.log(
+        `session.completed: turns=${turnsCompleted}, notes=${notes.length}, scores=${internalScores.length}, endReason=${endReason}, ceiling=${hardCeilingHit}`,
+      );
       printMetrics(turns);
       ws.close();
     }

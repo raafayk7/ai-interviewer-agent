@@ -1,6 +1,8 @@
 import { sql } from "drizzle-orm";
 import { jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import type {
+  AgentInternalScoreProps,
+  AgentNoteProps,
   CandidateInfoProps,
   FileRefProps,
   InterviewPlanSerialized,
@@ -19,6 +21,14 @@ export const interviews = pgTable("interviews", {
   interviewPlan: jsonb("interview_plan").$type<InterviewPlanSerialized | null>(),
   transcript: jsonb("transcript")
     .$type<ReadonlyArray<TranscriptEntryProps>>()
+    .notNull()
+    .default(sql`'[]'::jsonb`),
+  notes: jsonb("notes")
+    .$type<ReadonlyArray<AgentNoteProps>>()
+    .notNull()
+    .default(sql`'[]'::jsonb`),
+  internalScores: jsonb("internal_scores")
+    .$type<ReadonlyArray<AgentInternalScoreProps>>()
     .notNull()
     .default(sql`'[]'::jsonb`),
   jdFileRef: jsonb("jd_file_ref").$type<FileRefProps>().notNull(),

@@ -17,10 +17,10 @@ An ADR captures the context and reasoning behind a design choice that constrains
 | Category | Count |
 |---|---|
 | [Architecture & Cross-Cutting](#architecture--cross-cutting) | 1 |
-| [AI & Voice Pipeline](#ai--voice-pipeline) | 5 |
+| [AI & Voice Pipeline](#ai--voice-pipeline) | 6 |
 | [Data & Storage](#data--storage) | 2 |
-| [Observability](#observability) | 2 |
-| [Domain & Application Design](#domain--application-design) | 2 |
+| [Observability](#observability) | 3 |
+| [Domain & Application Design](#domain--application-design) | 3 |
 
 ---
 
@@ -41,6 +41,7 @@ An ADR captures the context and reasoning behind a design choice that constrains
 | [ADR-006](ADR-006-interview-duration-soft-target-with-hard-ceiling.md) | Interview Duration Is a Soft Target with a Hard Ceiling Enforced by the System | Accepted | 2026-05-09 |
 | [ADR-010](ADR-010-use-async-iterable-stream-contracts-for-stt-tts-ports.md) | Use AsyncIterable Stream Contracts for STT and TTS Application Ports | Accepted | 2026-05-10 |
 | [ADR-011](ADR-011-adopt-fastify-websocket-v11-for-websocket-transport.md) | Adopt @fastify/websocket v11 for WebSocket Transport in the Voice Pipeline | Accepted | 2026-05-10 |
+| [ADR-013](ADR-013-conduct-interview-orchestration-and-tool-effects.md) | Conduct Interview Orchestration: Tool Effects Persisted on the Aggregate, Per-Turn Persistence, and Agent Tool Surface | Proposed | 2026-05-10 |
 
 ### Data & Storage
 
@@ -54,7 +55,8 @@ An ADR captures the context and reasoning behind a design choice that constrains
 | # | Title | Status | Date |
 |---|---|---|---|
 | [ADR-004](ADR-004-use-langfuse-and-opentelemetry-for-llm-observability.md) | Use Langfuse and OpenTelemetry for LLM Observability | Accepted | 2026-05-09 |
-| [ADR-012](ADR-012-define-otel-span-hierarchy-for-voice-pipeline.md) | Define OTel Span Hierarchy for Voice Pipeline Sessions and Turns | Accepted | 2026-05-10 |
+| [ADR-012](ADR-012-define-otel-span-hierarchy-for-voice-pipeline.md) | Define OTel Span Hierarchy for Voice Pipeline Sessions and Turns | Accepted, amended by ADR-014 | 2026-05-10 |
+| [ADR-014](ADR-014-extend-otel-span-hierarchy-with-agent-turn-and-rename-session-span.md) | Extend OTel Span Hierarchy with `interview.turn.agent` and Unify Session Span as `interview.session.agent` | Proposed | 2026-05-10 |
 
 ### Domain & Application Design
 
@@ -62,6 +64,7 @@ An ADR captures the context and reasoning behind a design choice that constrains
 |---|---|---|---|
 | [ADR-008](ADR-008-two-step-orchestration-extract-then-generate-plan.md) | Two-Step Orchestration: Extract Then Generate Plan | Accepted | 2026-05-09 |
 | [ADR-009](ADR-009-document-extraction-telemetry-via-factory-closure-not-port-widening.md) | Document-Extraction Telemetry via Factory Closure, Not Port Widening | Accepted | 2026-05-09 |
+| [ADR-013](ADR-013-conduct-interview-orchestration-and-tool-effects.md) | Conduct Interview Orchestration: Tool Effects Persisted on the Aggregate, Per-Turn Persistence, and Agent Tool Surface | Proposed | 2026-05-10 |
 
 ---
 
@@ -97,12 +100,16 @@ ADR-001 (Clean Architecture)
   │           └── ADR-008 (Two-step orchestration)
   └── ADR-002 (Voice pipeline — port/adapter pattern)
         └── ADR-006 (Duration policy)
+        │     └── ADR-013 (Agent orchestration implements duration policy)
         └── ADR-010 (AsyncIterable stream contracts)
-              └── ADR-011 (WebSocket transport via @fastify/websocket v11)
+        │     └── ADR-011 (WebSocket transport via @fastify/websocket v11)
+        └── ADR-013 (Agent tool surface + per-turn persistence + event-sink pattern)
+              └── ADR-014 (interview.turn.agent span schema)
 
 ADR-004 (Langfuse OTel)
   └── ADR-009 (Telemetry factory closure enriches Langfuse spans)
   └── ADR-012 (OTel span hierarchy for voice pipeline — concretizes ADR-004's trace structure)
+        └── ADR-014 (Amends ADR-012: adds interview.turn.agent schema + session span rename)
 ```
 
 ---

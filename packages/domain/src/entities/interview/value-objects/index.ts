@@ -12,3 +12,7 @@ export {
 export type { InterviewPlanProps, InterviewPlanSerialized } from "./interview-plan.js";
 export { TranscriptEntry, SPEAKER } from "./transcript-entry.js";
 export type { TranscriptEntryProps, Speaker } from "./transcript-entry.js";
+export { AgentNote } from "./agent-note.js";
+export type { AgentNoteProps } from "./agent-note.js";
+export { AgentInternalScore } from "./agent-internal-score.js";
+export type { AgentInternalScoreProps } from "./agent-internal-score.js";

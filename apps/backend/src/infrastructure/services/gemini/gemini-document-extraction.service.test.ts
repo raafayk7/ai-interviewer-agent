@@ -65,6 +65,7 @@ const createHandle = () => {
   const handle: GeminiProviderHandle = {
     provider,
     defaultModel: "gemini-test",
+    defaultAgentModel: "gemini-agent-test",
   };
 
   return { handle, provider, model };

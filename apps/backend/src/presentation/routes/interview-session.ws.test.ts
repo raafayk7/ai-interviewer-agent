@@ -3,6 +3,7 @@ import { Result } from "@carbonteq/fp";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { buildApp } from "../../app.js";
+import type { ConductInterviewRuntimeInput } from "../controllers/interview-session.controller.js";
 
 describe("registerInterviewSessionRoutes", () => {
   let app: FastifyInstance | undefined;
@@ -13,12 +14,15 @@ describe("registerInterviewSessionRoutes", () => {
   });
 
   it("accepts a WebSocket session, sends the completion envelope, and closes cleanly", async () => {
-    const execute = vi.fn(async (input) =>
+    const execute = vi.fn(async (input: ConductInterviewRuntimeInput) =>
       Result.Ok({
         interviewId: input.interviewId,
         transcript: [],
+        notes: [],
+        internalScores: [],
         turnsCompleted: 4,
-        scriptVersion: "phase-4-spike-v1",
+        endReason: "all_topics_covered" as const,
+        hardCeilingHit: false,
       }),
     );
 
@@ -49,8 +53,11 @@ describe("registerInterviewSessionRoutes", () => {
         payload: {
           interviewId: "interview-1",
           transcript: [],
+          notes: [],
+          internalScores: [],
           turnsCompleted: 4,
-          scriptVersion: "phase-4-spike-v1",
+          endReason: "all_topics_covered",
+          hardCeilingHit: false,
         },
       },
       closeCode: 1000,

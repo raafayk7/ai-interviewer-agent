@@ -3,8 +3,8 @@ import type { Result } from "@carbonteq/fp";
 import type { WebSocket } from "@fastify/websocket";
 import type { FastifyRequest } from "fastify";
 import type {
-  RunScriptedInterviewSessionOutput,
-  RunScriptedInterviewSessionRuntimeInput,
+  ConductInterviewInput,
+  ConductInterviewOutput,
   ServiceError,
 } from "@repo/application";
 import { sendBinaryFrame, wsBinaryToAsyncIterable } from "../websocket/voice-websocket.js";
@@ -18,14 +18,20 @@ export const WS_CLOSE = {
   SERVICE_RESTART: 1012,
 } as const;
 
-export interface RunScriptedInterviewSessionUseCaseLike {
+export interface ConductInterviewUseCaseLike {
   execute(
-    input: RunScriptedInterviewSessionRuntimeInput,
-  ): Promise<Result<RunScriptedInterviewSessionOutput, ServiceError>>;
+    input: ConductInterviewRuntimeInput,
+  ): Promise<Result<ConductInterviewOutput, ServiceError>>;
+}
+
+export interface ConductInterviewRuntimeInput extends ConductInterviewInput {
+  readonly candidateAudioIn: AsyncIterable<Uint8Array>;
+  readonly agentAudioOut: (chunk: Uint8Array) => Promise<void>;
+  readonly abortSignal: AbortSignal;
 }
 
 export interface InterviewSessionDeps {
-  readonly buildUseCase: () => RunScriptedInterviewSessionUseCaseLike;
+  readonly buildUseCase: () => ConductInterviewUseCaseLike;
 }
 
 export class InterviewSessionController {
@@ -38,10 +44,9 @@ export class InterviewSessionController {
       return;
     }
 
-    const sessionSpan = sessionTracer.startSpan("interview.session.scripted", {
+    const sessionSpan = sessionTracer.startSpan("interview.session.agent", {
       attributes: {
         "interview.id": interviewId,
-        "interview.script_version": "phase-4-spike-v1",
       },
     });
 
@@ -83,8 +88,18 @@ export class InterviewSessionController {
 }
 
 export function mapErrorToWsClose(error: ServiceError): number {
-  if (error.code === "STT_UNAVAILABLE" || error.code === "TTS_UNAVAILABLE" || error.code === "SERVICE_UNAVAILABLE") {
+  if (
+    error.code === "STT_UNAVAILABLE" ||
+    error.code === "TTS_UNAVAILABLE" ||
+    error.code === "AGENT_UNAVAILABLE" ||
+    error.code === "SERVICE_UNAVAILABLE" ||
+    error.code === "AGENT_TURN_TIMEOUT"
+  ) {
     return WS_CLOSE.SERVICE_RESTART;
+  }
+
+  if (error.code === "INTERVIEW_NOT_FOUND" || error.code === "INVALID_INTERVIEW_INPUT") {
+    return WS_CLOSE.POLICY_VIOLATION;
   }
 
   return WS_CLOSE.INTERNAL_ERROR;

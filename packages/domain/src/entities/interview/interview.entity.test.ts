@@ -8,6 +8,8 @@ import { CandidateInfo } from "./value-objects/candidate-info.js";
 import { InterviewPlan } from "./value-objects/interview-plan.js";
 import { PlannedTopic, TOPIC_PRIORITY } from "./value-objects/planned-topic.js";
 import { TranscriptEntry, SPEAKER } from "./value-objects/transcript-entry.js";
+import { AgentNote } from "./value-objects/agent-note.js";
+import { AgentInternalScore } from "./value-objects/agent-internal-score.js";
 import { FileRef } from "../../shared/value-objects/file-ref.js";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -74,6 +76,28 @@ const makeTranscriptEntry = (speaker: "agent" | "candidate", text: string): Tran
   return r.unwrap();
 };
 
+const makeAgentNote = (): AgentNote => {
+  const r = AgentNote.create({
+    note: "Candidate gave a concise API design answer.",
+    recordedAtTurn: 1,
+    recordedAt: new Date("2025-01-01T10:01:00Z"),
+  });
+  expect(r.isOk()).toBe(true);
+  return r.unwrap();
+};
+
+const makeAgentInternalScore = (): AgentInternalScore => {
+  const r = AgentInternalScore.create({
+    topicName: "Algorithms",
+    score: 4,
+    justification: "Solved the core problem and discussed complexity.",
+    recordedAtTurn: 2,
+    recordedAt: new Date("2025-01-01T10:02:00Z"),
+  });
+  expect(r.isOk()).toBe(true);
+  return r.unwrap();
+};
+
 const makeInterview = (): Interview =>
   Interview.create({
     recruiterId: "recruiter-001",
@@ -84,6 +108,32 @@ const makeInterview = (): Interview =>
     jdFileRef: makeFileRef("interviews/abc/jd.pdf"),
     cvFileRef: makeFileRef("interviews/abc/cv.pdf"),
   });
+
+const makeInProgressInterview = (): Interview => {
+  const scheduledResult = makeInterview().schedule(makeInterviewPlan());
+  expect(scheduledResult.isOk()).toBe(true);
+  const startedResult = scheduledResult.unwrap().start(new Date("2025-06-01T09:05:00Z"));
+  expect(startedResult.isOk()).toBe(true);
+  return startedResult.unwrap();
+};
+
+const makeCompletedInterview = (): Interview => {
+  const completedResult = makeInProgressInterview().complete(new Date("2025-06-01T09:50:00Z"), []);
+  expect(completedResult.isOk()).toBe(true);
+  return completedResult.unwrap();
+};
+
+const makeCancelledInterview = (): Interview => {
+  const cancelledResult = makeInProgressInterview().cancel();
+  expect(cancelledResult.isOk()).toBe(true);
+  return cancelledResult.unwrap();
+};
+
+const makeEvaluatedInterview = (): Interview => {
+  const evaluatedResult = makeCompletedInterview().markEvaluated("report-uuid-001");
+  expect(evaluatedResult.isOk()).toBe(true);
+  return evaluatedResult.unwrap();
+};
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
@@ -103,6 +153,12 @@ describe("Interview", () => {
     it("has an empty transcript", () => {
       const interview = makeInterview();
       expect(interview.transcript).toHaveLength(0);
+    });
+
+    it("has empty notes and internal scores", () => {
+      const interview = makeInterview();
+      expect(interview.notes).toHaveLength(0);
+      expect(interview.internalScores).toHaveLength(0);
     });
 
     it("has no startedAt (Option.None)", () => {
@@ -244,6 +300,151 @@ describe("Interview", () => {
     });
   });
 
+  describe("appendTranscriptEntry()", () => {
+    it("succeeds when IN_PROGRESS and returns a new instance with the entry appended", () => {
+      const inProgress = makeInProgressInterview();
+      const entry = makeTranscriptEntry(SPEAKER.AGENT, "Tell me about your recent backend work.");
+      const result = inProgress.appendTranscriptEntry(entry);
+
+      expect(result.isOk()).toBe(true);
+      const updated = result.unwrap();
+      expect(updated).not.toBe(inProgress);
+      expect(updated.transcript).toHaveLength(1);
+      expect(updated.transcript[0]).toBe(entry);
+      expect(inProgress.transcript).toHaveLength(0);
+    });
+
+    it("rejects when status is CREATED", () => {
+      const result = makeInterview().appendTranscriptEntry(
+        makeTranscriptEntry(SPEAKER.AGENT, "Tell me about yourself."),
+      );
+      expect(result.isErr()).toBe(true);
+      expect(result.unwrapErr()).toBeInstanceOf(InvalidInterviewStateTransitionError);
+    });
+
+    it("rejects when status is SCHEDULED", () => {
+      const scheduledResult = makeInterview().schedule(makeInterviewPlan());
+      expect(scheduledResult.isOk()).toBe(true);
+      const result = scheduledResult.unwrap().appendTranscriptEntry(
+        makeTranscriptEntry(SPEAKER.AGENT, "Tell me about yourself."),
+      );
+      expect(result.isErr()).toBe(true);
+      expect(result.unwrapErr()).toBeInstanceOf(InvalidInterviewStateTransitionError);
+    });
+
+    it("rejects when status is COMPLETED", () => {
+      const result = makeCompletedInterview().appendTranscriptEntry(
+        makeTranscriptEntry(SPEAKER.AGENT, "Tell me about yourself."),
+      );
+      expect(result.isErr()).toBe(true);
+      expect(result.unwrapErr()).toBeInstanceOf(InvalidInterviewStateTransitionError);
+    });
+
+    it("rejects when status is EVALUATED", () => {
+      const result = makeEvaluatedInterview().appendTranscriptEntry(
+        makeTranscriptEntry(SPEAKER.AGENT, "Tell me about yourself."),
+      );
+      expect(result.isErr()).toBe(true);
+      expect(result.unwrapErr()).toBeInstanceOf(InvalidInterviewStateTransitionError);
+    });
+
+    it("rejects when status is CANCELLED", () => {
+      const result = makeCancelledInterview().appendTranscriptEntry(
+        makeTranscriptEntry(SPEAKER.AGENT, "Tell me about yourself."),
+      );
+      expect(result.isErr()).toBe(true);
+      expect(result.unwrapErr()).toBeInstanceOf(InvalidInterviewStateTransitionError);
+    });
+  });
+
+  describe("appendNote()", () => {
+    it("succeeds when IN_PROGRESS and returns a new instance with the note appended", () => {
+      const inProgress = makeInProgressInterview();
+      const note = makeAgentNote();
+      const result = inProgress.appendNote(note);
+
+      expect(result.isOk()).toBe(true);
+      const updated = result.unwrap();
+      expect(updated).not.toBe(inProgress);
+      expect(updated.notes).toHaveLength(1);
+      expect(updated.notes[0]).toBe(note);
+      expect(inProgress.notes).toHaveLength(0);
+    });
+
+    it("rejects when not IN_PROGRESS", () => {
+      const note = makeAgentNote();
+      const scheduleResult = makeInterview().schedule(makeInterviewPlan());
+      expect(scheduleResult.isOk()).toBe(true);
+      const interviews = [
+        makeInterview(),
+        scheduleResult.unwrap(),
+        makeCompletedInterview(),
+        makeEvaluatedInterview(),
+        makeCancelledInterview(),
+      ];
+
+      for (const interview of interviews) {
+        const result = interview.appendNote(note);
+        expect(result.isErr()).toBe(true);
+        expect(result.unwrapErr()).toBeInstanceOf(InvalidInterviewStateTransitionError);
+      }
+    });
+  });
+
+  describe("appendInternalScore()", () => {
+    it("succeeds when IN_PROGRESS and returns a new instance with the score appended", () => {
+      const inProgress = makeInProgressInterview();
+      const score = makeAgentInternalScore();
+      const result = inProgress.appendInternalScore(score);
+
+      expect(result.isOk()).toBe(true);
+      const updated = result.unwrap();
+      expect(updated).not.toBe(inProgress);
+      expect(updated.internalScores).toHaveLength(1);
+      expect(updated.internalScores[0]).toBe(score);
+      expect(inProgress.internalScores).toHaveLength(0);
+    });
+
+    it("rejects when not IN_PROGRESS", () => {
+      const score = makeAgentInternalScore();
+      const scheduleResult = makeInterview().schedule(makeInterviewPlan());
+      expect(scheduleResult.isOk()).toBe(true);
+      const interviews = [
+        makeInterview(),
+        scheduleResult.unwrap(),
+        makeCompletedInterview(),
+        makeEvaluatedInterview(),
+        makeCancelledInterview(),
+      ];
+
+      for (const interview of interviews) {
+        const result = interview.appendInternalScore(score);
+        expect(result.isErr()).toBe(true);
+        expect(result.unwrapErr()).toBeInstanceOf(InvalidInterviewStateTransitionError);
+      }
+    });
+  });
+
+  describe("append methods with complete()", () => {
+    it("complete after appendTranscriptEntry preserves appended entries in the final transcript", () => {
+      const inProgress = makeInProgressInterview();
+      const agentEntry = makeTranscriptEntry(SPEAKER.AGENT, "Tell me about yourself.");
+      const candidateEntry = makeTranscriptEntry(SPEAKER.CANDIDATE, "I build backend services.");
+      const firstAppend = inProgress.appendTranscriptEntry(agentEntry);
+      expect(firstAppend.isOk()).toBe(true);
+      const secondAppend = firstAppend.unwrap().appendTranscriptEntry(candidateEntry);
+      expect(secondAppend.isOk()).toBe(true);
+
+      const withTranscript = secondAppend.unwrap();
+      const completedResult = withTranscript.complete(
+        new Date("2025-06-01T09:50:00Z"),
+        withTranscript.transcript,
+      );
+      expect(completedResult.isOk()).toBe(true);
+      expect(completedResult.unwrap().transcript).toEqual([agentEntry, candidateEntry]);
+    });
+  });
+
   describe("cancel()", () => {
     it("succeeds from IN_PROGRESS state", () => {
       const interview = makeInterview();
@@ -314,6 +515,8 @@ describe("Interview", () => {
       expect(serialized.startedAt).toBeNull();
       expect(serialized.completedAt).toBeNull();
       expect(serialized.reportId).toBeNull();
+      expect(serialized.notes).toEqual([]);
+      expect(serialized.internalScores).toEqual([]);
     });
   });
 
@@ -358,6 +561,22 @@ describe("Interview", () => {
           { speaker: SPEAKER.AGENT, text: "Tell me about yourself.", timestamp: new Date("2025-06-01T09:05:00Z") },
           { speaker: SPEAKER.CANDIDATE, text: "I am experienced.", timestamp: new Date("2025-06-01T09:06:00Z") },
         ],
+        notes: [
+          {
+            note: "Candidate asked a useful clarification.",
+            recordedAtTurn: 1,
+            recordedAt: new Date("2025-06-01T09:07:00Z"),
+          },
+        ],
+        internalScores: [
+          {
+            topicName: "Algorithms",
+            score: 4,
+            justification: "Correct solution with time complexity discussion.",
+            recordedAtTurn: 2,
+            recordedAt: new Date("2025-06-01T09:08:00Z"),
+          },
+        ],
         jdFileRef: {
           key: "interviews/abc/jd.pdf",
           contentType: "application/pdf",
@@ -390,7 +609,22 @@ describe("Interview", () => {
       expect(reserialized.startedAt).toEqual(data.startedAt);
       expect(reserialized.completedAt).toEqual(data.completedAt);
       expect(reserialized.transcript).toHaveLength(2);
+      expect(reserialized.notes).toEqual(data.notes);
+      expect(reserialized.internalScores).toEqual(data.internalScores);
       expect(reserialized.interviewPlan).not.toBeNull();
+    });
+
+    it("round-trips notes and internal scores appended to an in-progress interview", () => {
+      const note = makeAgentNote();
+      const score = makeAgentInternalScore();
+      const noteResult = makeInProgressInterview().appendNote(note);
+      expect(noteResult.isOk()).toBe(true);
+      const scoreResult = noteResult.unwrap().appendInternalScore(score);
+      expect(scoreResult.isOk()).toBe(true);
+
+      const restored = Interview.fromSerialized(scoreResult.unwrap().serialize());
+      expect(restored.serialize().notes).toEqual([note.serialize()]);
+      expect(restored.serialize().internalScores).toEqual([score.serialize()]);
     });
   });
 });

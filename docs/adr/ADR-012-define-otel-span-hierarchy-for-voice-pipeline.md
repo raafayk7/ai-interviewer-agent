@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Date: 2026-05-10.
+Accepted. Date: 2026-05-10. Amended by ADR-014 (adds `interview.turn.agent` span schema and records session span rename to `interview.session.agent`).
 
 ## Context
 

@@ -12,6 +12,7 @@ export async function registerInterviewSessionRoutes(
 ): Promise<void> {
   const controller = new InterviewSessionController(options.deps);
 
+  // Phase 5: real Gemini agent driven via ConductInterviewUseCase.
   app.get("/:id/session", { websocket: true }, async (socket, req) => {
     await controller.handle(socket, req);
   });

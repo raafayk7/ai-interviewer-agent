@@ -1,6 +1,5 @@
 import Fastify from "fastify";
 import websocket from "@fastify/websocket";
-import { buildInterviewSessionDeps } from "./composition/interview-session.composition.js";
 import {
   registerInterviewSessionRoutes,
   type RegisterInterviewSessionRouteOptions,
@@ -23,10 +22,13 @@ export async function buildApp(options: BuildAppOptions = {}) {
     return { status: "ok" };
   });
 
+  const interviewSessionOptions = options.interviewSession ?? {
+    deps: (await import("./composition/interview-session.composition.js")).buildInterviewSessionDeps(),
+  };
+
   await app.register(registerInterviewSessionRoutes, {
     prefix: "/interviews",
-    deps: options.interviewSession?.deps ?? buildInterviewSessionDeps(),
-    ...options.interviewSession,
+    ...interviewSessionOptions,
   });
 
   return app;

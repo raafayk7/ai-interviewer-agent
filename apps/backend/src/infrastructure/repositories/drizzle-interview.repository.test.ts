@@ -1,5 +1,15 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { CandidateInfo, FileRef, Interview, InterviewPlan, JobDescription, PlannedTopic, TranscriptEntry } from "@repo/domain";
+import {
+  AgentInternalScore,
+  AgentNote,
+  CandidateInfo,
+  FileRef,
+  Interview,
+  InterviewPlan,
+  JobDescription,
+  PlannedTopic,
+  TranscriptEntry,
+} from "@repo/domain";
 import { DrizzleInterviewRepository } from "./drizzle-interview.repository.js";
 import { RepositoryConflictError } from "./errors/repository-error.js";
 import { closeTestDb, getTestDb, truncateAll, type TestDatabase } from "../persistence/__test-helpers__/test-db.js";
@@ -98,6 +108,38 @@ function buildTranscriptEntries(): ReadonlyArray<TranscriptEntry> {
   return [e1Result.unwrap(), e2Result.unwrap(), e3Result.unwrap()];
 }
 
+function startInterview(interview: Interview): Interview {
+  const scheduleResult = interview.schedule(buildInterviewPlan());
+  expect(scheduleResult.isOk()).toBe(true);
+
+  const startResult = scheduleResult.unwrap().start(new Date("2026-02-15T10:00:00Z"));
+  expect(startResult.isOk()).toBe(true);
+
+  return startResult.unwrap();
+}
+
+function buildAgentNote(): AgentNote {
+  const result = AgentNote.create({
+    note: "Candidate gave a concrete cache invalidation example.",
+    recordedAtTurn: 2,
+    recordedAt: new Date("2026-02-15T10:04:00Z"),
+  });
+  expect(result.isOk()).toBe(true);
+  return result.unwrap();
+}
+
+function buildAgentInternalScore(): AgentInternalScore {
+  const result = AgentInternalScore.create({
+    topicName: "System Design",
+    score: 4,
+    justification: "Strong requirements clarification and trade-off reasoning.",
+    recordedAtTurn: 2,
+    recordedAt: new Date("2026-02-15T10:05:00Z"),
+  });
+  expect(result.isOk()).toBe(true);
+  return result.unwrap();
+}
+
 // ─── Tests ─────────────────────────────────────────────────────────────────────
 
 describe("[Integration] DrizzleInterviewRepository", () => {
@@ -141,6 +183,9 @@ describe("[Integration] DrizzleInterviewRepository", () => {
     expect(serialized.jdFileRef.key).toBe(original.jdFileRef.key);
     expect(serialized.cvFileRef.key).toBe(original.cvFileRef.key);
     expect(serialized.interviewPlan).toBeNull();
+    expect(serialized.transcript).toEqual([]);
+    expect(serialized.notes).toEqual([]);
+    expect(serialized.internalScores).toEqual([]);
     expect(serialized.startedAt).toBeNull();
     expect(serialized.completedAt).toBeNull();
     expect(serialized.reportId).toBeNull();
@@ -267,6 +312,72 @@ describe("[Integration] DrizzleInterviewRepository", () => {
     expect(reloaded.transcript[0]!.text).toBe(original.transcript[0]!.text);
     expect(reloaded.transcript[1]!.speaker).toBe("candidate");
     expect(reloaded.transcript[2]!.text).toBe(original.transcript[2]!.text);
+  });
+
+  it("JSONB round-trip preserves agent notes", async () => {
+    const started = startInterview(buildInterview());
+    const appendResult = started.appendNote(buildAgentNote());
+    expect(appendResult.isOk()).toBe(true);
+    const withNote = appendResult.unwrap();
+
+    const saveResult = await repo.save(withNote);
+    expect(saveResult.isOk()).toBe(true);
+
+    const findResult = await repo.findById(withNote.id);
+    expect(findResult.isOk()).toBe(true);
+    const option = findResult.unwrap();
+    expect(option.isSome()).toBe(true);
+
+    const reloaded = option.unwrap().serialize();
+    expect(reloaded.notes).toEqual(withNote.serialize().notes);
+    expect(reloaded.internalScores).toEqual([]);
+  });
+
+  it("JSONB round-trip preserves agent internal scores", async () => {
+    const started = startInterview(buildInterview());
+    const appendResult = started.appendInternalScore(buildAgentInternalScore());
+    expect(appendResult.isOk()).toBe(true);
+    const withScore = appendResult.unwrap();
+
+    const saveResult = await repo.save(withScore);
+    expect(saveResult.isOk()).toBe(true);
+
+    const findResult = await repo.findById(withScore.id);
+    expect(findResult.isOk()).toBe(true);
+    const option = findResult.unwrap();
+    expect(option.isSome()).toBe(true);
+
+    const reloaded = option.unwrap().serialize();
+    expect(reloaded.notes).toEqual([]);
+    expect(reloaded.internalScores).toEqual(withScore.serialize().internalScores);
+  });
+
+  it("upsert preserves transcript, notes, and internal scores together", async () => {
+    const started = startInterview(buildInterview());
+    const transcriptResult = started.appendTranscriptEntry(buildTranscriptEntries()[0]!);
+    expect(transcriptResult.isOk()).toBe(true);
+    const noteResult = transcriptResult.unwrap().appendNote(buildAgentNote());
+    expect(noteResult.isOk()).toBe(true);
+    const scoreResult = noteResult.unwrap().appendInternalScore(buildAgentInternalScore());
+    expect(scoreResult.isOk()).toBe(true);
+    const enriched = scoreResult.unwrap();
+
+    const firstSave = await repo.save(started);
+    expect(firstSave.isOk()).toBe(true);
+
+    const secondSave = await repo.save(enriched);
+    expect(secondSave.isOk()).toBe(true);
+
+    const findResult = await repo.findById(enriched.id);
+    expect(findResult.isOk()).toBe(true);
+    const option = findResult.unwrap();
+    expect(option.isSome()).toBe(true);
+
+    const reloaded = option.unwrap().serialize();
+    const original = enriched.serialize();
+    expect(reloaded.transcript).toEqual(original.transcript);
+    expect(reloaded.notes).toEqual(original.notes);
+    expect(reloaded.internalScores).toEqual(original.internalScores);
   });
 
   it("pg unique-violation on a raw duplicate insert translates to RepositoryConflictError", async () => {

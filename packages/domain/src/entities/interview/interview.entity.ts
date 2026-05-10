@@ -12,6 +12,10 @@ import {
   InterviewStatusPolicy,
 } from "./interview-status.js";
 import {
+  AgentInternalScore,
+  type AgentInternalScoreProps,
+  AgentNote,
+  type AgentNoteProps,
   CandidateInfo,
   type CandidateInfoProps,
   InterviewPlan,
@@ -45,6 +49,8 @@ export interface InterviewSerialized {
   readonly clientInstructions: string;
   readonly interviewPlan: InterviewPlanSerialized | null;
   readonly transcript: ReadonlyArray<TranscriptEntryProps>;
+  readonly notes: ReadonlyArray<AgentNoteProps>;
+  readonly internalScores: ReadonlyArray<AgentInternalScoreProps>;
   readonly jdFileRef: FileRefProps;
   readonly cvFileRef: FileRefProps;
   readonly scheduledAt: Date;
@@ -69,6 +75,8 @@ export class Interview extends BaseEntity {
     readonly clientInstructions: string,
     readonly interviewPlan: Option<InterviewPlan>,
     readonly transcript: ReadonlyArray<TranscriptEntry>,
+    readonly notes: ReadonlyArray<AgentNote>,
+    readonly internalScores: ReadonlyArray<AgentInternalScore>,
     readonly jdFileRef: FileRef,
     readonly cvFileRef: FileRef,
     readonly scheduledAt: Date,
@@ -95,6 +103,8 @@ export class Interview extends BaseEntity {
       props.candidateInfo,
       props.clientInstructions,
       Option.None,
+      Object.freeze([]),
+      Object.freeze([]),
       Object.freeze([]),
       props.jdFileRef,
       props.cvFileRef,
@@ -141,6 +151,27 @@ export class Interview extends BaseEntity {
     );
   }
 
+  appendTranscriptEntry(entry: TranscriptEntry): Result<Interview, InvalidInterviewStateTransitionError> {
+    if (this.status !== INTERVIEW_STATUS.IN_PROGRESS) {
+      return Result.Err(new InvalidInterviewStateTransitionError(this.status, INTERVIEW_STATUS.IN_PROGRESS));
+    }
+    return Result.Ok(this.withChanges({ transcript: Object.freeze([...this.transcript, entry]) }));
+  }
+
+  appendNote(note: AgentNote): Result<Interview, InvalidInterviewStateTransitionError> {
+    if (this.status !== INTERVIEW_STATUS.IN_PROGRESS) {
+      return Result.Err(new InvalidInterviewStateTransitionError(this.status, INTERVIEW_STATUS.IN_PROGRESS));
+    }
+    return Result.Ok(this.withChanges({ notes: Object.freeze([...this.notes, note]) }));
+  }
+
+  appendInternalScore(score: AgentInternalScore): Result<Interview, InvalidInterviewStateTransitionError> {
+    if (this.status !== INTERVIEW_STATUS.IN_PROGRESS) {
+      return Result.Err(new InvalidInterviewStateTransitionError(this.status, INTERVIEW_STATUS.IN_PROGRESS));
+    }
+    return Result.Ok(this.withChanges({ internalScores: Object.freeze([...this.internalScores, score]) }));
+  }
+
   /** COMPLETED → EVALUATED — links report. */
   markEvaluated(reportId: ReportId): Result<Interview, InvalidInterviewStateTransitionError> {
     if (!InterviewStatusPolicy.canTransition(this.status, INTERVIEW_STATUS.EVALUATED)) {
@@ -172,6 +203,8 @@ export class Interview extends BaseEntity {
         None: () => null,
       }),
       transcript: this.transcript.map((t) => t.serialize()),
+      notes: this.notes.map((n) => n.serialize()),
+      internalScores: this.internalScores.map((s) => s.serialize()),
       jdFileRef: this.jdFileRef.serialize(),
       cvFileRef: this.cvFileRef.serialize(),
       scheduledAt: this.scheduledAt,
@@ -193,6 +226,8 @@ export class Interview extends BaseEntity {
       data.clientInstructions,
       data.interviewPlan === null ? Option.None : Option.Some(InterviewPlan.fromSerialized(data.interviewPlan)),
       Object.freeze(data.transcript.map((t) => TranscriptEntry.fromSerialized(t))),
+      Object.freeze(data.notes.map((n) => AgentNote.fromSerialized(n))),
+      Object.freeze(data.internalScores.map((s) => AgentInternalScore.fromSerialized(s))),
       FileRef.fromSerialized(data.jdFileRef),
       FileRef.fromSerialized(data.cvFileRef),
       data.scheduledAt,
@@ -210,6 +245,8 @@ export class Interview extends BaseEntity {
     status: InterviewStatus;
     interviewPlan: Option<InterviewPlan>;
     transcript: ReadonlyArray<TranscriptEntry>;
+    notes: ReadonlyArray<AgentNote>;
+    internalScores: ReadonlyArray<AgentInternalScore>;
     startedAt: Option<Date>;
     completedAt: Option<Date>;
     reportId: Option<ReportId>;
@@ -223,6 +260,8 @@ export class Interview extends BaseEntity {
       this.clientInstructions,
       patch.interviewPlan ?? this.interviewPlan,
       patch.transcript ?? this.transcript,
+      patch.notes ?? this.notes,
+      patch.internalScores ?? this.internalScores,
       this.jdFileRef,
       this.cvFileRef,
       this.scheduledAt,

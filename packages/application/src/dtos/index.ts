@@ -25,10 +25,10 @@ export type {
   GenerateInterviewPlanOutput,
 } from "./generate-interview-plan.dto.js";
 export {
-  RunScriptedInterviewSessionInputDto,
-  RunScriptedInterviewSessionInputSchema,
-} from "./run-scripted-interview-session.dto.js";
+  ConductInterviewInputDto,
+  ConductInterviewInputSchema,
+} from "./conduct-interview.dto.js";
 export type {
-  RunScriptedInterviewSessionInput,
-  RunScriptedInterviewSessionOutput,
-} from "./run-scripted-interview-session.dto.js";
+  ConductInterviewInput,
+  ConductInterviewOutput,
+} from "./conduct-interview.dto.js";
