@@ -1,3 +1,5 @@
 export * from "./storage/index.js";
 export * from "./document-extraction/index.js";
 export * from "./interview-planner/index.js";
+export * from "./speech-to-text/index.js";
+export * from "./text-to-speech/index.js";

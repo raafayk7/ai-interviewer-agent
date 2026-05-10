@@ -24,3 +24,11 @@ export type {
   GenerateInterviewPlanInput,
   GenerateInterviewPlanOutput,
 } from "./generate-interview-plan.dto.js";
+export {
+  RunScriptedInterviewSessionInputDto,
+  RunScriptedInterviewSessionInputSchema,
+} from "./run-scripted-interview-session.dto.js";
+export type {
+  RunScriptedInterviewSessionInput,
+  RunScriptedInterviewSessionOutput,
+} from "./run-scripted-interview-session.dto.js";

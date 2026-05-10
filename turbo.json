@@ -1,6 +1,26 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
   "ui": "tui",
+  "globalEnv": [
+    "DATABASE_URL",
+    "TEST_DATABASE_URL",
+    "PORT",
+    "HOST",
+    "GOOGLE_GENERATIVE_AI_API_KEY",
+    "GEMINI_MODEL",
+    "DEEPGRAM_API_KEY",
+    "DEEPGRAM_MODEL",
+    "DEEPGRAM_LANGUAGE",
+    "DEEPGRAM_SAMPLE_RATE",
+    "DEEPGRAM_ENCODING",
+    "ELEVENLABS_API_KEY",
+    "ELEVENLABS_VOICE_ID",
+    "ELEVENLABS_MODEL_ID",
+    "ELEVENLABS_OUTPUT_FORMAT",
+    "LANGFUSE_PUBLIC_KEY",
+    "LANGFUSE_SECRET_KEY",
+    "LANGFUSE_BASE_URL"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

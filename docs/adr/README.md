@@ -17,9 +17,9 @@ An ADR captures the context and reasoning behind a design choice that constrains
 | Category | Count |
 |---|---|
 | [Architecture & Cross-Cutting](#architecture--cross-cutting) | 1 |
-| [AI & Voice Pipeline](#ai--voice-pipeline) | 3 |
+| [AI & Voice Pipeline](#ai--voice-pipeline) | 5 |
 | [Data & Storage](#data--storage) | 2 |
-| [Observability](#observability) | 1 |
+| [Observability](#observability) | 2 |
 | [Domain & Application Design](#domain--application-design) | 2 |
 
 ---
@@ -39,6 +39,8 @@ An ADR captures the context and reasoning behind a design choice that constrains
 | [ADR-002](ADR-002-use-sandwich-architecture-for-voice-interviews.md) | Use Sandwich Architecture for Voice Interviews | Accepted | 2026-05-09 |
 | [ADR-003](ADR-003-use-gemini-multimodal-for-document-ingestion.md) | Use Gemini Multimodal for Document Ingestion | Accepted | 2026-05-09 |
 | [ADR-006](ADR-006-interview-duration-soft-target-with-hard-ceiling.md) | Interview Duration Is a Soft Target with a Hard Ceiling Enforced by the System | Accepted | 2026-05-09 |
+| [ADR-010](ADR-010-use-async-iterable-stream-contracts-for-stt-tts-ports.md) | Use AsyncIterable Stream Contracts for STT and TTS Application Ports | Accepted | 2026-05-10 |
+| [ADR-011](ADR-011-adopt-fastify-websocket-v11-for-websocket-transport.md) | Adopt @fastify/websocket v11 for WebSocket Transport in the Voice Pipeline | Accepted | 2026-05-10 |
 
 ### Data & Storage
 
@@ -52,6 +54,7 @@ An ADR captures the context and reasoning behind a design choice that constrains
 | # | Title | Status | Date |
 |---|---|---|---|
 | [ADR-004](ADR-004-use-langfuse-and-opentelemetry-for-llm-observability.md) | Use Langfuse and OpenTelemetry for LLM Observability | Accepted | 2026-05-09 |
+| [ADR-012](ADR-012-define-otel-span-hierarchy-for-voice-pipeline.md) | Define OTel Span Hierarchy for Voice Pipeline Sessions and Turns | Accepted | 2026-05-10 |
 
 ### Domain & Application Design
 
@@ -94,9 +97,12 @@ ADR-001 (Clean Architecture)
   │           └── ADR-008 (Two-step orchestration)
   └── ADR-002 (Voice pipeline — port/adapter pattern)
         └── ADR-006 (Duration policy)
+        └── ADR-010 (AsyncIterable stream contracts)
+              └── ADR-011 (WebSocket transport via @fastify/websocket v11)
 
 ADR-004 (Langfuse OTel)
   └── ADR-009 (Telemetry factory closure enriches Langfuse spans)
+  └── ADR-012 (OTel span hierarchy for voice pipeline — concretizes ADR-004's trace structure)
 ```
 
 ---

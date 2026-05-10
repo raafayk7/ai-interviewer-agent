@@ -1,4 +1,4 @@
-import { LangfuseSpanProcessor } from "@langfuse/otel";
+import { isDefaultExportSpan, LangfuseSpanProcessor } from "@langfuse/otel";
 import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
 import { NodeSDK } from "@opentelemetry/sdk-node";
 
@@ -24,6 +24,8 @@ export function initOtel(env: NodeJS.ProcessEnv = process.env): OtelHandle {
         publicKey,
         secretKey,
         baseUrl,
+        shouldExportSpan: ({ otelSpan }) =>
+          otelSpan.name.startsWith("interview.") || isDefaultExportSpan(otelSpan),
       }),
     ],
     instrumentations: [getNodeAutoInstrumentations()],

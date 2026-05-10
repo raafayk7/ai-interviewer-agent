@@ -11,6 +11,7 @@
     "lint": "eslint --max-warnings 0",
     "test": "vitest run",
     "test:watch": "vitest",
+    "voice:latency": "tsx src/scripts/measure-voice-latency.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio"
@@ -19,6 +20,7 @@
     "@ai-sdk/google": "^3.0.61",
     "@carbonteq/fp": "^0.9.1",
     "@deepgram/sdk": "^5.0.0",
+    "@fastify/websocket": "^11.0.0",
     "@langfuse/otel": "^5.1.0",
     "@opentelemetry/api": "^1.9.1",
     "@opentelemetry/auto-instrumentations-node": "^0.72.0",
@@ -30,12 +32,14 @@
     "elevenlabs": "^1.59.0",
     "fastify": "^5.3.3",
     "langfuse": "^3.38.20",
-    "postgres": "^3.4.7"
+    "postgres": "^3.4.7",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@types/node": "^22.15.3",
+    "@types/ws": "^8.5.13",
     "drizzle-kit": "^0.31.1",
     "eslint": "^9.39.1",
     "tsx": "^4.19.4",

@@ -84,7 +84,7 @@ describe("CreateInterviewInputDto", () => {
 
     it("returns Err when jdFileRef.uploadedAt is not a Date", () => {
       const input = validInput();
-      (input.jdFileRef as any).uploadedAt = "2025-01-01";
+      (input.jdFileRef as { uploadedAt: unknown }).uploadedAt = "2025-01-01";
       const result = CreateInterviewInputDto.parse(input);
       expect(result.isErr()).toBe(true);
       expect(result.unwrapErr()).toBeInstanceOf(DtoValidationError);
