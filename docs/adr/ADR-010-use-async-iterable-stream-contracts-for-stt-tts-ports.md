@@ -129,13 +129,13 @@ Declarative: the rules map cleanly to pattern matching on the ports barrel and o
   "require_pattern": [
     {
       "pattern": "ISpeechToTextService",
-      "path_glob": "packages/application/src/ports/index.ts",
-      "message": "ISpeechToTextService must be re-exported from the ports barrel (ADR-010)."
+      "path_glob": "packages/application/src/ports/speech-to-text/index.ts",
+      "message": "ISpeechToTextService must be re-exported from the speech-to-text barrel (ADR-010)."
     },
     {
       "pattern": "ITextToSpeechService",
-      "path_glob": "packages/application/src/ports/index.ts",
-      "message": "ITextToSpeechService must be re-exported from the ports barrel (ADR-010)."
+      "path_glob": "packages/application/src/ports/text-to-speech/index.ts",
+      "message": "ITextToSpeechService must be re-exported from the text-to-speech barrel (ADR-010)."
     }
   ],
   "forbid_import": [
