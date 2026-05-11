@@ -19,8 +19,8 @@ An ADR captures the context and reasoning behind a design choice that constrains
 | [Architecture & Cross-Cutting](#architecture--cross-cutting) | 1 |
 | [AI & Voice Pipeline](#ai--voice-pipeline) | 6 |
 | [Data & Storage](#data--storage) | 2 |
-| [Observability](#observability) | 3 |
-| [Domain & Application Design](#domain--application-design) | 3 |
+| [Observability](#observability) | 4 |
+| [Domain & Application Design](#domain--application-design) | 4 |
 
 ---
 
@@ -57,6 +57,7 @@ An ADR captures the context and reasoning behind a design choice that constrains
 | [ADR-004](ADR-004-use-langfuse-and-opentelemetry-for-llm-observability.md) | Use Langfuse and OpenTelemetry for LLM Observability | Accepted | 2026-05-09 |
 | [ADR-012](ADR-012-define-otel-span-hierarchy-for-voice-pipeline.md) | Define OTel Span Hierarchy for Voice Pipeline Sessions and Turns | Accepted, amended by ADR-014 | 2026-05-10 |
 | [ADR-014](ADR-014-extend-otel-span-hierarchy-with-agent-turn-and-rename-session-span.md) | Extend OTel Span Hierarchy with `interview.turn.agent` and Unify Session Span as `interview.session.agent` | Proposed | 2026-05-10 |
+| [ADR-015](ADR-015-phase-6-evaluation-span-schema-explicit-invocation-and-hardcoded-rubric.md) | Phase 6 Evaluation: Span Schema, Explicit Invocation Policy, and Hardcoded Rubric | Proposed | 2026-05-11 |
 
 ### Domain & Application Design
 
@@ -65,6 +66,7 @@ An ADR captures the context and reasoning behind a design choice that constrains
 | [ADR-008](ADR-008-two-step-orchestration-extract-then-generate-plan.md) | Two-Step Orchestration: Extract Then Generate Plan | Accepted | 2026-05-09 |
 | [ADR-009](ADR-009-document-extraction-telemetry-via-factory-closure-not-port-widening.md) | Document-Extraction Telemetry via Factory Closure, Not Port Widening | Accepted | 2026-05-09 |
 | [ADR-013](ADR-013-conduct-interview-orchestration-and-tool-effects.md) | Conduct Interview Orchestration: Tool Effects Persisted on the Aggregate, Per-Turn Persistence, and Agent Tool Surface | Proposed | 2026-05-10 |
+| [ADR-015](ADR-015-phase-6-evaluation-span-schema-explicit-invocation-and-hardcoded-rubric.md) | Phase 6 Evaluation: Span Schema, Explicit Invocation Policy, and Hardcoded Rubric | Proposed | 2026-05-11 |
 
 ---
 
@@ -110,6 +112,7 @@ ADR-004 (Langfuse OTel)
   └── ADR-009 (Telemetry factory closure enriches Langfuse spans)
   └── ADR-012 (OTel span hierarchy for voice pipeline — concretizes ADR-004's trace structure)
         └── ADR-014 (Amends ADR-012: adds interview.turn.agent schema + session span rename)
+              └── ADR-015 (Fulfills ADR-014 D7c: interview.evaluation span schema + invocation policy)
 ```
 
 ---

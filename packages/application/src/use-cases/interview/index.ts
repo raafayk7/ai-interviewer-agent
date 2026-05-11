@@ -5,5 +5,10 @@ export {
   type ConductInterviewDeps,
   type ConductInterviewRuntimeInput,
 } from "./conduct-interview.use-case.js";
+export {
+  EvaluateInterviewUseCase,
+  type EvaluateInterviewDeps,
+} from "./evaluate-interview.use-case.js";
+export { EVALUATION_RUBRIC } from "./evaluation-rubric.js";
 export { assembleInterviewSystemPrompt } from "./system-prompt-assembler.js";
 export type { SystemPromptInput } from "./system-prompt-assembler.js";

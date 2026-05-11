@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Glob",
+      "Grep",
+      "Write(**)",
+      "Edit(**)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(rg:*)",
+      "Bash(grep:*)",
+      "Bash(cat:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(wc:*)",
+      "Bash(tree:*)",
+      "Bash(pwd)",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(pnpm list:*)",
+      "Bash(pnpm why:*)",
+      "Bash(pnpm turbo run check-types:*)",
+      "Bash(pnpm turbo run test:*)",
+      "Bash(pnpm turbo run build:*)",
+      "Bash(pnpm turbo run lint:*)",
+      "Bash(pnpm --filter backend test:*)",
+      "Bash(pnpm --filter @repo/application test:*)",
+      "Bash(pnpm --filter @repo/domain test:*)"
+    ]
+  }
+}

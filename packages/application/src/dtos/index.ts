@@ -32,3 +32,11 @@ export type {
   ConductInterviewInput,
   ConductInterviewOutput,
 } from "./conduct-interview.dto.js";
+export {
+  EvaluateInterviewInputDto,
+  EvaluateInterviewInputSchema,
+} from "./evaluate-interview.dto.js";
+export type {
+  EvaluateInterviewInput,
+  EvaluateInterviewOutput,
+} from "./evaluate-interview.dto.js";
