@@ -27,6 +27,12 @@ These backend rules apply to:
 
 Frontend work in `apps/web/`, `apps/docs/`, and `packages/ui/` follows the repo's frontend conventions and is not governed by these backend rules.
 
+## Documentation
+
+After completing any milestone, feature, or development phase, use `progress-doc` to write a structured progress document to `docs/progress/`.
+
+Pass the milestone title as the argument. The skill automatically uses a per-file detailed format for 10 or fewer changed files, or a layer/component summary for more than 10 files.
+
 ## Backend Workflow
 
 Before backend edits, classify the task:

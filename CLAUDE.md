@@ -11,6 +11,11 @@ For frontend work (`apps/web/`, `apps/docs/`, `packages/ui/`), use these skills:
 - `/frontend-design` — production-grade frontend interfaces with high design quality
 - `/chat-ui` — chat UI building blocks (use when the task involves AI chatbot or messaging interfaces)
 
+## Documentation
+
+After completing any milestone, feature, or development phase:
+- `/progress-doc` — write a structured progress document to `docs/progress/`. Pass the milestone title as the argument. Automatically uses a per-file detailed format for ≤10 changed files, or a layer/component summary for >10 files.
+
 ## Commands
 
 ```bash
