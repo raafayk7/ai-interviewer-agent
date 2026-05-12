@@ -1,6 +1,16 @@
 export { CreateInterviewUseCase } from "./create-interview.use-case.js";
 export { GenerateInterviewPlanUseCase } from "./generate-interview-plan.use-case.js";
 export {
+  GetInterviewByIdUseCase,
+  type GetInterviewByIdInput,
+  type GetInterviewByIdOutput,
+} from "./get-interview-by-id.use-case.js";
+export {
+  ListInterviewsByRecruiterUseCase,
+  type ListInterviewsByRecruiterInput,
+  type ListInterviewsByRecruiterOutput,
+} from "./list-interviews-by-recruiter.use-case.js";
+export {
   ConductInterviewUseCase,
   type ConductInterviewDeps,
   type ConductInterviewRuntimeInput,

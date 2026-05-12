@@ -11,7 +11,6 @@ const validFileRef = () => ({
 });
 
 const validInput = () => ({
-  recruiterId: "recruiter-001",
   jobDescription: {
     title: "Senior Backend Engineer",
     company: "Acme Corp",
@@ -40,15 +39,14 @@ describe("CreateInterviewInputDto", () => {
       const result = CreateInterviewInputDto.parse(validInput());
       expect(result.isOk()).toBe(true);
       const dto = result.unwrap();
-      expect(dto.value.recruiterId).toBe("recruiter-001");
       expect(dto.value.candidateInfo.email).toBe("jane.doe@example.com");
     });
 
-    it("returns Err when scheduledAt is not a Date", () => {
+    it("coerces scheduledAt from an ISO date string", () => {
       const input = { ...validInput(), scheduledAt: "2025-06-01" };
       const result = CreateInterviewInputDto.parse(input);
-      expect(result.isErr()).toBe(true);
-      expect(result.unwrapErr()).toBeInstanceOf(DtoValidationError);
+      expect(result.isOk()).toBe(true);
+      expect(result.unwrap().value.scheduledAt).toEqual(new Date("2025-06-01T00:00:00.000Z"));
     });
 
     it("returns Err when candidateInfo.email is invalid", () => {
@@ -67,11 +65,11 @@ describe("CreateInterviewInputDto", () => {
       expect(result.unwrapErr()).toBeInstanceOf(DtoValidationError);
     });
 
-    it("returns Err when recruiterId is empty", () => {
+    it("does not expose recruiterId as public DTO input", () => {
       const input = { ...validInput(), recruiterId: "" };
       const result = CreateInterviewInputDto.parse(input);
-      expect(result.isErr()).toBe(true);
-      expect(result.unwrapErr()).toBeInstanceOf(DtoValidationError);
+      expect(result.isOk()).toBe(true);
+      expect("recruiterId" in result.unwrap().value).toBe(false);
     });
 
     it("returns Err when jobDescription.title is empty", () => {

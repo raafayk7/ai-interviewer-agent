@@ -30,16 +30,19 @@ const CandidateInfoSchema = z.object({
 });
 
 export const CreateInterviewInputSchema = z.object({
-  recruiterId: z.string().min(1),
   jobDescription: JobDescriptionSchema,
   candidateInfo: CandidateInfoSchema,
   clientInstructions: z.string(),
-  scheduledAt: z.date(),
+  scheduledAt: z.coerce.date(),
   jdFileRef: FileRefSchema,
   cvFileRef: FileRefSchema,
 });
 
 export type CreateInterviewInput = z.infer<typeof CreateInterviewInputSchema>;
+
+export interface CreateInterviewExecuteInput extends CreateInterviewInput {
+  readonly recruiterId: string;
+}
 
 export class CreateInterviewInputDto extends BaseDto<CreateInterviewInput> {
   static parse(raw: unknown): Result<CreateInterviewInputDto, DtoValidationError> {

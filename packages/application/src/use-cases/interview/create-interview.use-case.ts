@@ -8,14 +8,22 @@ import {
 } from "@repo/domain";
 import { UseCase } from "../../core/use-case.js";
 import { ServiceUnknownError, type ServiceError } from "../../core/service-error.js";
-import type { CreateInterviewInput, CreateInterviewOutput } from "../../dtos/create-interview.dto.js";
+import type {
+  CreateInterviewExecuteInput,
+  CreateInterviewOutput,
+} from "../../dtos/create-interview.dto.js";
 
-export class CreateInterviewUseCase extends UseCase<CreateInterviewInput, CreateInterviewOutput> {
+export class CreateInterviewUseCase extends UseCase<
+  CreateInterviewExecuteInput,
+  CreateInterviewOutput
+> {
   constructor(private readonly interviews: IInterviewRepository) {
     super();
   }
 
-  async execute(input: CreateInterviewInput): Promise<Result<CreateInterviewOutput, ServiceError>> {
+  async execute(
+    input: CreateInterviewExecuteInput,
+  ): Promise<Result<CreateInterviewOutput, ServiceError>> {
     const jdR = JobDescription.create(input.jobDescription);
     const ciR = CandidateInfo.create(input.candidateInfo);
     const jdRefR = FileRef.create(input.jdFileRef);

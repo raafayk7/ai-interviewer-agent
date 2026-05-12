@@ -21,6 +21,8 @@ An ADR captures the context and reasoning behind a design choice that constrains
 | [Data & Storage](#data--storage) | 2 |
 | [Observability](#observability) | 4 |
 | [Domain & Application Design](#domain--application-design) | 4 |
+| [Authentication & Security](#authentication--security) | 3 |
+| [Presentation](#presentation) | 1 |
 
 ---
 
@@ -68,6 +70,20 @@ An ADR captures the context and reasoning behind a design choice that constrains
 | [ADR-013](ADR-013-conduct-interview-orchestration-and-tool-effects.md) | Conduct Interview Orchestration: Tool Effects Persisted on the Aggregate, Per-Turn Persistence, and Agent Tool Surface | Proposed | 2026-05-10 |
 | [ADR-015](ADR-015-phase-6-evaluation-span-schema-explicit-invocation-and-hardcoded-rubric.md) | Phase 6 Evaluation: Span Schema, Explicit Invocation Policy, and Hardcoded Rubric | Proposed | 2026-05-11 |
 
+### Authentication & Security
+
+| # | Title | Status | Date |
+|---|---|---|---|
+| [ADR-016](ADR-016-adopt-better-auth-for-recruiter-authentication.md) | Adopt better-auth for Recruiter Authentication | Proposed | 2026-05-12 |
+| [ADR-017](ADR-017-candidate-access-via-hmac-signed-link.md) | Candidate Access via HMAC-Signed Link | Proposed | 2026-05-12 |
+| [ADR-019](ADR-019-ownership-checks-in-presentation-not-application.md) | Recruiter Ownership Checks Live in the Presentation Layer, Not the Application or Domain Layer | Proposed | 2026-05-12 |
+
+### Presentation
+
+| # | Title | Status | Date |
+|---|---|---|---|
+| [ADR-018](ADR-018-http-error-mapping-by-error-code-with-exhaustive-table.md) | HTTP Error Mapping by Error Code String with an Exhaustive Status Table | Proposed | 2026-05-12 |
+
 ---
 
 ## Key Architectural Themes
@@ -101,12 +117,17 @@ ADR-001 (Clean Architecture)
   │     └── ADR-007 (Store extracted VOs in aggregate JSONB)
   │           └── ADR-008 (Two-step orchestration)
   └── ADR-002 (Voice pipeline — port/adapter pattern)
-        └── ADR-006 (Duration policy)
-        │     └── ADR-013 (Agent orchestration implements duration policy)
-        └── ADR-010 (AsyncIterable stream contracts)
-        │     └── ADR-011 (WebSocket transport via @fastify/websocket v11)
-        └── ADR-013 (Agent tool surface + per-turn persistence + event-sink pattern)
-              └── ADR-014 (interview.turn.agent span schema)
+  │     └── ADR-006 (Duration policy)
+  │     │     └── ADR-013 (Agent orchestration implements duration policy)
+  │     └── ADR-010 (AsyncIterable stream contracts)
+  │     │     └── ADR-011 (WebSocket transport via @fastify/websocket v11)
+  │     └── ADR-013 (Agent tool surface + per-turn persistence + event-sink pattern)
+  │           └── ADR-014 (interview.turn.agent span schema)
+  └── ADR-016 (better-auth recruiter auth — infrastructure layer, session in presentation)
+  └── ADR-017 (HMAC-signed candidate link — stateless WS guard, complements ADR-016)
+  │     └── ADR-011 (WebSocket transport being guarded)
+  └── ADR-018 (HTTP error mapping — presentation boundary, enforces Result chain termination)
+  └── ADR-019 (Ownership checks in presentation — depends on ADR-016 session.userId, depends on ADR-001 layer separation)
 
 ADR-004 (Langfuse OTel)
   └── ADR-009 (Telemetry factory closure enriches Langfuse spans)
