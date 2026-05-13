@@ -23,6 +23,7 @@ An ADR captures the context and reasoning behind a design choice that constrains
 | [Domain & Application Design](#domain--application-design) | 4 |
 | [Authentication & Security](#authentication--security) | 3 |
 | [Presentation](#presentation) | 1 |
+| [Frontend](#frontend) | 4 |
 
 ---
 
@@ -85,6 +86,15 @@ An ADR captures the context and reasoning behind a design choice that constrains
 |---|---|---|---|
 | [ADR-018](ADR-018-http-error-mapping-by-error-code-with-exhaustive-table.md) | HTTP Error Mapping by Error Code String with an Exhaustive Status Table | Proposed | 2026-05-12 |
 
+### Frontend
+
+| # | Title | Status | Date |
+|---|---|---|---|
+| [ADR-021](ADR-021-adopt-zustand-for-frontend-client-state.md) | Adopt Zustand for Frontend Client State (UI State Only) | Accepted | 2026-05-13 |
+| [ADR-022](ADR-022-use-tanstack-query-for-frontend-server-state.md) | Use TanStack Query v5 for Frontend Server State | Accepted | 2026-05-13 |
+| [ADR-023](ADR-023-adopt-shadcn-ui-radix-tailwind-v4-component-system.md) | Adopt shadcn/ui (Radix + Tailwind v4) for the Frontend Component System | Accepted | 2026-05-13 |
+| [ADR-024](ADR-024-react-hook-form-and-zod-4-for-frontend-forms.md) | Standardise on React Hook Form + Zod 4 for Frontend Forms and Wire Validation | Accepted | 2026-05-13 |
+
 ---
 
 ## Key Architectural Themes
@@ -136,6 +146,17 @@ ADR-004 (Langfuse OTel)
   │     └── ADR-014 (Amends ADR-012: adds interview.turn.agent schema + session span rename)
   │           └── ADR-015 (Fulfills ADR-014 D7c: interview.evaluation span schema + invocation policy)
   └── ADR-020 (Host planner/evaluator prompts in Langfuse — realises ADR-004 prompt-versioning intent)
+
+Frontend (Phase 8) — partitions the entire frontend state + presentation surface into non-overlapping libraries
+  ADR-021 (Zustand — UI/ephemeral state)
+  │     ↔ ADR-022 (TanStack Query — server state; complementary half of the state-management split)
+  ADR-022 (TanStack Query)
+  │     └── consumes ADR-018 (HTTP error mapping — ServiceError shape)
+  │     ↔ ADR-024 (RHF — form submissions wired through useMutation)
+  ADR-023 (shadcn/ui + Radix + Tailwind v4)
+  │     ↔ ADR-024 (RHF forms built on shadcn primitives)
+  ADR-024 (React Hook Form + Zod 4)
+  │     └── consumes ADR-018 (ValidationError issues shape — RHF setError round-trip)
 ```
 
 ---
