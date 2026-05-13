@@ -29,7 +29,6 @@ Frontend rules apply to:
 
 - `apps/web/`
 - `packages/ui/`
-- `apps/docs/` where applicable
 
 ## Documentation
 
