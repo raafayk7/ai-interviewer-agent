@@ -17,6 +17,11 @@ import {
   GeminiInterviewPlannerService,
   geminiProviderFromEnv,
 } from "../infrastructure/services/gemini/index.js";
+import {
+  langfusePromptClientFromEnv,
+  NullLangfusePromptClient,
+  type ILangfusePromptClient,
+} from "../infrastructure/prompts/langfuse-prompt-client.js";
 import type {
   CandidateLinkIssuer,
   RecruiterInterviewControllerDeps,
@@ -39,6 +44,11 @@ export function buildRecruiterInterviewDeps(
     throw new Error(`Boot failed: ${geminiHandleResult.unwrapErr().message}`);
   }
 
+  const promptClientResult = langfusePromptClientFromEnv(env);
+  const promptClient: ILangfusePromptClient = promptClientResult.isOk()
+    ? promptClientResult.unwrap()
+    : new NullLangfusePromptClient();
+
   const db: Database =
     options.db ??
     (require("../infrastructure/persistence/db.js") as typeof import("../infrastructure/persistence/db.js")).db;
@@ -53,12 +63,12 @@ export function buildRecruiterInterviewDeps(
     getInterviewByIdUseCase: new GetInterviewByIdUseCase(interviews),
     generatePlanUseCase: new GenerateInterviewPlanUseCase(
       interviews,
-      new GeminiInterviewPlannerService(geminiHandle),
+      new GeminiInterviewPlannerService(geminiHandle, promptClient),
     ),
     evaluateInterviewUseCase: new EvaluateInterviewUseCase({
       interviews,
       reports,
-      evaluator: new GeminiInterviewEvaluatorService(geminiHandle),
+      evaluator: new GeminiInterviewEvaluatorService(geminiHandle, promptClient),
     }),
     getReportByInterviewIdUseCase: new GetReportByInterviewIdUseCase(reports),
     candidateLink: options.candidateLink,

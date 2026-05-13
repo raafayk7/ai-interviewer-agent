@@ -1,7 +1,11 @@
+import { Result } from "@carbonteq/fp";
 import { generateText, NoObjectGeneratedError, Output } from "ai";
 import { PlannerOutputInvalidError, PlannerUnavailableError, PlannerUnknownError } from "@repo/application";
 import { CandidateInfo, InterviewPlan, JobDescription, TOPIC_PRIORITY } from "@repo/domain";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { INTERVIEW_PLANNER_FALLBACK } from "../../prompts/fallbacks/interview-planner.fallback.js";
+import type { FetchedPrompt, ILangfusePromptClient } from "../../prompts/langfuse-prompt-client.js";
+import { PROMPT_KEYS } from "../../prompts/prompt-keys.js";
 import { GeminiInterviewPlannerService } from "./gemini-interview-planner.service.js";
 import type { GeminiProviderHandle } from "./provider.js";
 
@@ -95,6 +99,33 @@ const createHandle = () => {
   return { handle, provider, model };
 };
 
+const createPromptClient = (options?: {
+  readonly isFallback?: boolean;
+  readonly result?: "ok" | "err";
+}) => {
+  type PromptClientResult = Awaited<ReturnType<ILangfusePromptClient["getText"]>>;
+  const metadata = { name: PROMPT_KEYS.INTERVIEW_PLANNER, version: 3 };
+  const compile = vi.fn((variables: Record<string, string>) => JSON.stringify(variables));
+  const toJSON = vi.fn(() => metadata);
+  const fetched: FetchedPrompt = {
+    isFallback: options?.isFallback ?? false,
+    handle: {
+      isFallback: options?.isFallback ?? false,
+      compile,
+      toJSON,
+    },
+  };
+  const getText = vi.fn(
+    async (): Promise<PromptClientResult> =>
+      options?.result === "err"
+        ? (Result.Err(new Error("prompt unavailable")) as PromptClientResult)
+        : Result.Ok(fetched),
+  );
+  const prompts: ILangfusePromptClient = { getText };
+
+  return { prompts, getText, compile, toJSON, metadata };
+};
+
 const makePlannerInput = () => ({
   interviewId: "interview-1",
   jobDescription: makeJobDescription(),
@@ -118,8 +149,9 @@ describe("GeminiInterviewPlannerService.generatePlan", () => {
 
   it("generates an InterviewPlan and passes telemetry, prompt context, and structured output config", async () => {
     const { handle, provider, model } = createHandle();
+    const promptClient = createPromptClient();
     mockGenerateTextOutput(planOutput);
-    const service = new GeminiInterviewPlannerService(handle);
+    const service = new GeminiInterviewPlannerService(handle, promptClient.prompts);
 
     const result = await service.generatePlan(makePlannerInput());
 
@@ -134,25 +166,81 @@ describe("GeminiInterviewPlannerService.generatePlan", () => {
 
     const options = lastGenerateTextOptions();
     expect(options["model"]).toBe(model);
-    expect(options["experimental_telemetry"]).toEqual({
-      isEnabled: true,
-      functionId: "GeminiInterviewPlannerService.generatePlan",
-      metadata: {
-        interviewId: "interview-1",
-        targetDurationMinutes: 20,
-        maxDurationMinutes: 30,
-      },
-    });
+    expect(promptClient.getText).toHaveBeenCalledWith(PROMPT_KEYS.INTERVIEW_PLANNER, INTERVIEW_PLANNER_FALLBACK);
+    expect(promptClient.compile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        target_duration_minutes: "20",
+        max_duration_minutes: "30",
+        client_instructions: "Focus on backend depth.",
+      }),
+    );
+    expect(promptClient.toJSON).toHaveBeenCalledOnce();
+    expect(options["experimental_telemetry"]).toEqual(
+      expect.objectContaining({
+        isEnabled: true,
+        functionId: "GeminiInterviewPlannerService.generatePlan",
+        metadata: expect.objectContaining({
+          interviewId: "interview-1",
+          targetDurationMinutes: 20,
+          maxDurationMinutes: 30,
+          langfusePrompt: promptClient.metadata,
+        }),
+      }),
+    );
 
     expect(options["prompt"]).toContain("Senior Backend Engineer");
     expect(options["prompt"]).toContain("Ada Lovelace");
     expect(options["prompt"]).toContain("Focus on backend depth.");
   });
 
+  it("omits Langfuse prompt linkage when the fetched prompt is fallback", async () => {
+    const { handle } = createHandle();
+    const promptClient = createPromptClient({ isFallback: true });
+    mockGenerateTextOutput(planOutput);
+    const service = new GeminiInterviewPlannerService(handle, promptClient.prompts);
+
+    const result = await service.generatePlan(makePlannerInput());
+
+    expect(result.isOk()).toBe(true);
+    const options = lastGenerateTextOptions();
+    expect(options["experimental_telemetry"]).toEqual(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          interviewId: "interview-1",
+          targetDurationMinutes: 20,
+          maxDurationMinutes: 30,
+        }),
+      }),
+    );
+    expect(
+      (options["experimental_telemetry"] as { metadata: Record<string, unknown> }).metadata["langfusePrompt"],
+    ).toBeUndefined();
+    expect(promptClient.toJSON).not.toHaveBeenCalled();
+  });
+
+  it("uses local fallback compilation when prompt fetching fails", async () => {
+    const { handle } = createHandle();
+    const promptClient = createPromptClient({ result: "err" });
+    mockGenerateTextOutput(planOutput);
+    const service = new GeminiInterviewPlannerService(handle, promptClient.prompts);
+
+    const result = await service.generatePlan(makePlannerInput());
+
+    expect(result.isOk()).toBe(true);
+    const options = lastGenerateTextOptions();
+    expect(options["prompt"]).toContain("Target duration: 20 minutes. Maximum duration: 30 minutes.");
+    expect(options["prompt"]).toContain("Senior Backend Engineer");
+    expect(options["prompt"]).toContain("Ada Lovelace");
+    expect(
+      (options["experimental_telemetry"] as { metadata: Record<string, unknown> }).metadata["langfusePrompt"],
+    ).toBeUndefined();
+  });
+
   it("uses default duration metadata when overrides are omitted", async () => {
     const { handle } = createHandle();
+    const promptClient = createPromptClient();
     mockGenerateTextOutput(planOutput);
-    const service = new GeminiInterviewPlannerService(handle);
+    const service = new GeminiInterviewPlannerService(handle, promptClient.prompts);
 
     await service.generatePlan({
       interviewId: "interview-2",
@@ -161,21 +249,29 @@ describe("GeminiInterviewPlannerService.generatePlan", () => {
       clientInstructions: "",
     });
 
-    expect(lastGenerateTextOptions()["experimental_telemetry"]).toEqual({
-      isEnabled: true,
-      functionId: "GeminiInterviewPlannerService.generatePlan",
-      metadata: {
-        interviewId: "interview-2",
-        targetDurationMinutes: 15,
-        maxDurationMinutes: 25,
-      },
-    });
+    expect(promptClient.compile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        target_duration_minutes: "15",
+        max_duration_minutes: "25",
+        client_instructions: "(none)",
+      }),
+    );
+    expect(lastGenerateTextOptions()["experimental_telemetry"]).toEqual(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          interviewId: "interview-2",
+          targetDurationMinutes: 15,
+          maxDurationMinutes: 25,
+          langfusePrompt: promptClient.metadata,
+        }),
+      }),
+    );
   });
 
   it("maps empty topics to PlannerOutputInvalidError", async () => {
     const { handle } = createHandle();
     mockGenerateTextOutput({ ...planOutput, topics: [] });
-    const service = new GeminiInterviewPlannerService(handle);
+    const service = new GeminiInterviewPlannerService(handle, createPromptClient().prompts);
 
     const result = await service.generatePlan(makePlannerInput());
 
@@ -189,7 +285,7 @@ describe("GeminiInterviewPlannerService.generatePlan", () => {
       ...planOutput,
       topics: [{ ...planOutput.topics[0], name: "" }],
     });
-    const service = new GeminiInterviewPlannerService(handle);
+    const service = new GeminiInterviewPlannerService(handle, createPromptClient().prompts);
 
     const result = await service.generatePlan(makePlannerInput());
 
@@ -204,7 +300,7 @@ describe("GeminiInterviewPlannerService.generatePlan", () => {
       targetDurationMinutes: 30,
       maxDurationMinutes: 20,
     });
-    const service = new GeminiInterviewPlannerService(handle);
+    const service = new GeminiInterviewPlannerService(handle, createPromptClient().prompts);
 
     const result = await service.generatePlan(makePlannerInput());
 
@@ -215,7 +311,7 @@ describe("GeminiInterviewPlannerService.generatePlan", () => {
   it("maps NoObjectGeneratedError to PlannerOutputInvalidError", async () => {
     const { handle } = createHandle();
     generateTextMock.mockRejectedValue(noObjectError());
-    const service = new GeminiInterviewPlannerService(handle);
+    const service = new GeminiInterviewPlannerService(handle, createPromptClient().prompts);
 
     const result = await service.generatePlan(makePlannerInput());
 
@@ -226,7 +322,7 @@ describe("GeminiInterviewPlannerService.generatePlan", () => {
   it("maps timeout-like errors to PlannerUnavailableError", async () => {
     const { handle } = createHandle();
     generateTextMock.mockRejectedValue(new Error("ETIMEDOUT"));
-    const service = new GeminiInterviewPlannerService(handle);
+    const service = new GeminiInterviewPlannerService(handle, createPromptClient().prompts);
 
     const result = await service.generatePlan(makePlannerInput());
 
@@ -237,7 +333,7 @@ describe("GeminiInterviewPlannerService.generatePlan", () => {
   it("maps unknown AI failures to PlannerUnknownError", async () => {
     const { handle } = createHandle();
     generateTextMock.mockRejectedValue(new Error("unexpected provider state"));
-    const service = new GeminiInterviewPlannerService(handle);
+    const service = new GeminiInterviewPlannerService(handle, createPromptClient().prompts);
 
     const result = await service.generatePlan(makePlannerInput());
 

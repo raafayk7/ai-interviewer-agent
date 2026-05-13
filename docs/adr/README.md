@@ -19,7 +19,7 @@ An ADR captures the context and reasoning behind a design choice that constrains
 | [Architecture & Cross-Cutting](#architecture--cross-cutting) | 1 |
 | [AI & Voice Pipeline](#ai--voice-pipeline) | 6 |
 | [Data & Storage](#data--storage) | 2 |
-| [Observability](#observability) | 4 |
+| [Observability](#observability) | 5 |
 | [Domain & Application Design](#domain--application-design) | 4 |
 | [Authentication & Security](#authentication--security) | 3 |
 | [Presentation](#presentation) | 1 |
@@ -60,6 +60,7 @@ An ADR captures the context and reasoning behind a design choice that constrains
 | [ADR-012](ADR-012-define-otel-span-hierarchy-for-voice-pipeline.md) | Define OTel Span Hierarchy for Voice Pipeline Sessions and Turns | Accepted, amended by ADR-014 | 2026-05-10 |
 | [ADR-014](ADR-014-extend-otel-span-hierarchy-with-agent-turn-and-rename-session-span.md) | Extend OTel Span Hierarchy with `interview.turn.agent` and Unify Session Span as `interview.session.agent` | Proposed | 2026-05-10 |
 | [ADR-015](ADR-015-phase-6-evaluation-span-schema-explicit-invocation-and-hardcoded-rubric.md) | Phase 6 Evaluation: Span Schema, Explicit Invocation Policy, and Hardcoded Rubric | Proposed | 2026-05-11 |
+| [ADR-020](ADR-020-host-llm-prompts-in-langfuse-with-code-resident-fallbacks.md) | Host LLM Prompts in Langfuse with Code-Resident Fallbacks | Proposed | 2026-05-13 |
 
 ### Domain & Application Design
 
@@ -132,8 +133,9 @@ ADR-001 (Clean Architecture)
 ADR-004 (Langfuse OTel)
   └── ADR-009 (Telemetry factory closure enriches Langfuse spans)
   └── ADR-012 (OTel span hierarchy for voice pipeline — concretizes ADR-004's trace structure)
-        └── ADR-014 (Amends ADR-012: adds interview.turn.agent schema + session span rename)
-              └── ADR-015 (Fulfills ADR-014 D7c: interview.evaluation span schema + invocation policy)
+  │     └── ADR-014 (Amends ADR-012: adds interview.turn.agent schema + session span rename)
+  │           └── ADR-015 (Fulfills ADR-014 D7c: interview.evaluation span schema + invocation policy)
+  └── ADR-020 (Host planner/evaluator prompts in Langfuse — realises ADR-004 prompt-versioning intent)
 ```
 
 ---

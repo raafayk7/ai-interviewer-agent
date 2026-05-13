@@ -1,3 +1,4 @@
+import { Result } from "@carbonteq/fp";
 import { generateText, NoObjectGeneratedError, Output, RetryError } from "ai";
 import {
   EvaluatorOutputInvalidError,
@@ -15,6 +16,9 @@ import {
   TranscriptEntry,
 } from "@repo/domain";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { INTERVIEW_EVALUATOR_FALLBACK } from "../../prompts/fallbacks/interview-evaluator.fallback.js";
+import type { FetchedPrompt, ILangfusePromptClient } from "../../prompts/langfuse-prompt-client.js";
+import { PROMPT_KEYS } from "../../prompts/prompt-keys.js";
 import { GeminiInterviewEvaluatorService } from "./gemini-interview-evaluator.service.js";
 import type { GeminiProviderHandle } from "./provider.js";
 
@@ -175,6 +179,33 @@ const createHandle = () => {
   return { handle, provider, model };
 };
 
+const createPromptClient = (options?: {
+  readonly isFallback?: boolean;
+  readonly result?: "ok" | "err";
+}) => {
+  type PromptClientResult = Awaited<ReturnType<ILangfusePromptClient["getText"]>>;
+  const metadata = { name: PROMPT_KEYS.INTERVIEW_EVALUATOR, version: 4 };
+  const compile = vi.fn((variables: Record<string, string>) => JSON.stringify(variables));
+  const toJSON = vi.fn(() => metadata);
+  const fetched: FetchedPrompt = {
+    isFallback: options?.isFallback ?? false,
+    handle: {
+      isFallback: options?.isFallback ?? false,
+      compile,
+      toJSON,
+    },
+  };
+  const getText = vi.fn(
+    async (): Promise<PromptClientResult> =>
+      options?.result === "err"
+        ? (Result.Err(new Error("prompt unavailable")) as PromptClientResult)
+        : Result.Ok(fetched),
+  );
+  const prompts: ILangfusePromptClient = { getText };
+
+  return { prompts, getText, compile, toJSON, metadata };
+};
+
 const makeEvaluatorInput = (): InterviewEvaluatorInput => ({
   interviewId: "interview-1",
   jobDescription: makeJobDescription(),
@@ -204,8 +235,9 @@ describe("GeminiInterviewEvaluatorService.evaluate", () => {
 
   it("returns ReportCreateProps and passes telemetry, prompt context, structured output, and span metadata", async () => {
     const { handle, provider, model } = createHandle();
+    const promptClient = createPromptClient();
     mockGenerateTextOutput(evaluatorOutput);
-    const service = new GeminiInterviewEvaluatorService(handle);
+    const service = new GeminiInterviewEvaluatorService(handle, promptClient.prompts);
 
     const result = await service.evaluate(makeEvaluatorInput());
 
@@ -225,16 +257,27 @@ describe("GeminiInterviewEvaluatorService.evaluate", () => {
 
     const options = lastGenerateTextOptions();
     expect(options["model"]).toBe(model);
-    expect(options["experimental_telemetry"]).toEqual({
-      isEnabled: true,
-      functionId: "GeminiInterviewEvaluatorService.evaluate",
-      metadata: {
-        interviewId: "interview-1",
-        transcriptEntries: 1,
-        notes: 1,
-        internalScores: 1,
-      },
-    });
+    expect(promptClient.getText).toHaveBeenCalledWith(PROMPT_KEYS.INTERVIEW_EVALUATOR, INTERVIEW_EVALUATOR_FALLBACK);
+    expect(promptClient.compile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        client_instructions: "Focus on backend depth.",
+        rubric: "Score each planned topic on a 0-5 scale.",
+      }),
+    );
+    expect(promptClient.toJSON).toHaveBeenCalledOnce();
+    expect(options["experimental_telemetry"]).toEqual(
+      expect.objectContaining({
+        isEnabled: true,
+        functionId: "GeminiInterviewEvaluatorService.evaluate",
+        metadata: expect.objectContaining({
+          interviewId: "interview-1",
+          transcriptEntries: 1,
+          notes: 1,
+          internalScores: 1,
+          langfusePrompt: promptClient.metadata,
+        }),
+      }),
+    );
     expect(options["prompt"]).toContain("Senior Backend Engineer");
     expect(options["prompt"]).toContain("Ada Lovelace");
     expect(options["prompt"]).toContain("Focus on backend depth.");
@@ -253,10 +296,54 @@ describe("GeminiInterviewEvaluatorService.evaluate", () => {
     expect(otelMocks.span.end).toHaveBeenCalledOnce();
   });
 
+  it("omits Langfuse prompt linkage when the fetched prompt is fallback", async () => {
+    const { handle } = createHandle();
+    const promptClient = createPromptClient({ isFallback: true });
+    mockGenerateTextOutput(evaluatorOutput);
+    const service = new GeminiInterviewEvaluatorService(handle, promptClient.prompts);
+
+    const result = await service.evaluate(makeEvaluatorInput());
+
+    expect(result.isOk()).toBe(true);
+    const options = lastGenerateTextOptions();
+    expect(options["experimental_telemetry"]).toEqual(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          interviewId: "interview-1",
+          transcriptEntries: 1,
+          notes: 1,
+          internalScores: 1,
+        }),
+      }),
+    );
+    expect(
+      (options["experimental_telemetry"] as { metadata: Record<string, unknown> }).metadata["langfusePrompt"],
+    ).toBeUndefined();
+    expect(promptClient.toJSON).not.toHaveBeenCalled();
+  });
+
+  it("uses local fallback compilation when prompt fetching fails", async () => {
+    const { handle } = createHandle();
+    const promptClient = createPromptClient({ result: "err" });
+    mockGenerateTextOutput(evaluatorOutput);
+    const service = new GeminiInterviewEvaluatorService(handle, promptClient.prompts);
+
+    const result = await service.evaluate(makeEvaluatorInput());
+
+    expect(result.isOk()).toBe(true);
+    const options = lastGenerateTextOptions();
+    expect(options["prompt"]).toContain("Senior Backend Engineer");
+    expect(options["prompt"]).toContain("Ada Lovelace");
+    expect(options["prompt"]).toContain("Score each planned topic on a 0-5 scale.");
+    expect(
+      (options["experimental_telemetry"] as { metadata: Record<string, unknown> }).metadata["langfusePrompt"],
+    ).toBeUndefined();
+  });
+
   it("maps NoObjectGeneratedError to EvaluatorOutputInvalidError", async () => {
     const { handle } = createHandle();
     generateTextMock.mockRejectedValue(noObjectError());
-    const service = new GeminiInterviewEvaluatorService(handle);
+    const service = new GeminiInterviewEvaluatorService(handle, createPromptClient().prompts);
 
     const result = await service.evaluate(makeEvaluatorInput());
 
@@ -269,7 +356,7 @@ describe("GeminiInterviewEvaluatorService.evaluate", () => {
   it("maps retry-like errors to EvaluatorUnavailableError", async () => {
     const { handle } = createHandle();
     generateTextMock.mockRejectedValue(retryError());
-    const service = new GeminiInterviewEvaluatorService(handle);
+    const service = new GeminiInterviewEvaluatorService(handle, createPromptClient().prompts);
 
     const result = await service.evaluate(makeEvaluatorInput());
 
@@ -280,7 +367,7 @@ describe("GeminiInterviewEvaluatorService.evaluate", () => {
   it("maps network-like failures to EvaluatorUnavailableError", async () => {
     const { handle } = createHandle();
     generateTextMock.mockRejectedValue(new Error("fetch failed"));
-    const service = new GeminiInterviewEvaluatorService(handle);
+    const service = new GeminiInterviewEvaluatorService(handle, createPromptClient().prompts);
 
     const result = await service.evaluate(makeEvaluatorInput());
 
@@ -291,7 +378,7 @@ describe("GeminiInterviewEvaluatorService.evaluate", () => {
   it("maps 5xx provider failures to EvaluatorUnavailableError", async () => {
     const { handle } = createHandle();
     generateTextMock.mockRejectedValue(Object.assign(new Error("provider down"), { status: 503 }));
-    const service = new GeminiInterviewEvaluatorService(handle);
+    const service = new GeminiInterviewEvaluatorService(handle, createPromptClient().prompts);
 
     const result = await service.evaluate(makeEvaluatorInput());
 
@@ -302,7 +389,7 @@ describe("GeminiInterviewEvaluatorService.evaluate", () => {
   it("maps unknown AI failures to EvaluatorUnknownError", async () => {
     const { handle } = createHandle();
     generateTextMock.mockRejectedValue(new Error("unexpected provider state"));
-    const service = new GeminiInterviewEvaluatorService(handle);
+    const service = new GeminiInterviewEvaluatorService(handle, createPromptClient().prompts);
 
     const result = await service.evaluate(makeEvaluatorInput());
 
@@ -316,7 +403,7 @@ describe("GeminiInterviewEvaluatorService.evaluate", () => {
       ...evaluatorOutput,
       topicScores: [{ ...evaluatorOutput.topicScores[0], score: 6 }],
     });
-    const service = new GeminiInterviewEvaluatorService(handle);
+    const service = new GeminiInterviewEvaluatorService(handle, createPromptClient().prompts);
 
     const result = await service.evaluate(makeEvaluatorInput());
 

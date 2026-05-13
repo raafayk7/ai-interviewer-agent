@@ -1,5 +1,5 @@
 import { Result } from "@carbonteq/fp";
-import { trace, type Span } from "@opentelemetry/api";
+import { trace, type AttributeValue, type Span } from "@opentelemetry/api";
 import { generateText, jsonSchema, NoObjectGeneratedError, Output, RetryError } from "ai";
 import {
   EvaluatorOutputInvalidError,
@@ -16,6 +16,10 @@ import {
   TopicScore,
   type TopicScoreProps,
 } from "@repo/domain";
+import { INTERVIEW_EVALUATOR_FALLBACK } from "../../prompts/fallbacks/interview-evaluator.fallback.js";
+import type { FetchedPrompt, ILangfusePromptClient } from "../../prompts/langfuse-prompt-client.js";
+import { PROMPT_KEYS } from "../../prompts/prompt-keys.js";
+import { renderTemplate } from "../../prompts/render-template.js";
 import type { GeminiProviderHandle } from "./provider.js";
 
 const tracer = trace.getTracer("ai-interviewer.gemini-evaluator");
@@ -160,32 +164,24 @@ const mapAiError =
     return new EvaluatorUnknownError(err instanceof Error ? err.message : String(err), "evaluate");
   };
 
-const buildPrompt = (input: InterviewEvaluatorInput): string =>
-  [
-    "You are an experienced technical recruiter writing a structured screening report.",
-    "Read the job description, candidate profile, client instructions, transcript, agent notes, and the agent's internal per-topic scores, then produce the report.",
-    "",
-    "Job description:",
-    JSON.stringify(input.jobDescription.serialize(), null, 2),
-    "",
-    "Candidate profile:",
-    JSON.stringify(input.candidateInfo.serialize(), null, 2),
-    "",
-    "Client instructions:",
-    input.clientInstructions.trim() ? input.clientInstructions : "(none)",
-    "",
-    "Transcript (chronological):",
-    JSON.stringify(input.transcript.map((entry) => entry.serialize()), null, 2),
-    "",
-    "Agent notes (private observations during the interview):",
-    JSON.stringify(input.notes.map((note) => note.serialize()), null, 2),
-    "",
-    "Agent internal scores (recorded mid-interview, 0-5 scale):",
-    JSON.stringify(input.internalScores.map((score) => score.serialize()), null, 2),
-    "",
-    "Rubric:",
-    input.rubric,
-  ].join("\n");
+const fallbackFetchedPrompt = (key: string, fallback: string): FetchedPrompt => ({
+  isFallback: true,
+  handle: {
+    isFallback: true,
+    compile: (variables: Record<string, string>) => renderTemplate(fallback, variables),
+    toJSON: () => ({ kind: "fallback-on-error", key }),
+  },
+});
+
+const buildVariables = (input: InterviewEvaluatorInput): Record<string, string> => ({
+  job_description_json: JSON.stringify(input.jobDescription.serialize(), null, 2),
+  candidate_profile_json: JSON.stringify(input.candidateInfo.serialize(), null, 2),
+  client_instructions: input.clientInstructions.trim() ? input.clientInstructions : "(none)",
+  transcript_json: JSON.stringify(input.transcript.map((entry) => entry.serialize()), null, 2),
+  notes_json: JSON.stringify(input.notes.map((note) => note.serialize()), null, 2),
+  internal_scores_json: JSON.stringify(input.internalScores.map((score) => score.serialize()), null, 2),
+  rubric: input.rubric,
+});
 
 const liftReport = (
   raw: EvaluatorRawOutput,
@@ -215,9 +211,19 @@ const liftReport = (
 };
 
 export class GeminiInterviewEvaluatorService implements IInterviewEvaluatorService {
-  constructor(private readonly handle: GeminiProviderHandle) {}
+  constructor(
+    private readonly handle: GeminiProviderHandle,
+    private readonly prompts: ILangfusePromptClient,
+  ) {}
 
   async evaluate(input: InterviewEvaluatorInput): Promise<Result<ReportCreateProps, EvaluatorError>> {
+    const fetched = await this.prompts.getText(PROMPT_KEYS.INTERVIEW_EVALUATOR, INTERVIEW_EVALUATOR_FALLBACK);
+    const prompt = await fetched.match({
+      Err: async () => fallbackFetchedPrompt(PROMPT_KEYS.INTERVIEW_EVALUATOR, INTERVIEW_EVALUATOR_FALLBACK),
+      Ok: async (value) => value,
+    });
+    const compiledPrompt = prompt.handle.compile(buildVariables(input));
+
     const span: Span = tracer.startSpan("interview.evaluation", {
       attributes: {
         "interview.id": input.interviewId,
@@ -228,6 +234,17 @@ export class GeminiInterviewEvaluatorService implements IInterviewEvaluatorServi
       },
     });
 
+    const telemetryMetadata: Record<string, AttributeValue> = {
+      interviewId: input.interviewId,
+      transcriptEntries: input.transcript.length,
+      notes: input.notes.length,
+      internalScores: input.internalScores.length,
+    };
+
+    if (!prompt.isFallback) {
+      telemetryMetadata["langfusePrompt"] = prompt.handle.toJSON() as AttributeValue;
+    }
+
     const result = await Result.tryAsyncCatch(
       async () => {
         const result = await generateText({
@@ -237,16 +254,11 @@ export class GeminiInterviewEvaluatorService implements IInterviewEvaluatorServi
             name: "InterviewEvaluation",
             description: "Structured screening report scored against the supplied rubric, transcript, JD, and CV.",
           }),
-          prompt: buildPrompt(input),
+          prompt: compiledPrompt,
           experimental_telemetry: {
             isEnabled: true,
             functionId: "GeminiInterviewEvaluatorService.evaluate",
-            metadata: {
-              interviewId: input.interviewId,
-              transcriptEntries: input.transcript.length,
-              notes: input.notes.length,
-              internalScores: input.internalScores.length,
-            },
+            metadata: telemetryMetadata,
           },
         });
 

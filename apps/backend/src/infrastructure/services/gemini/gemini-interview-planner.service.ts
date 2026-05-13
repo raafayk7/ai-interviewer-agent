@@ -1,4 +1,5 @@
 import { Result } from "@carbonteq/fp";
+import type { AttributeValue } from "@opentelemetry/api";
 import { generateText, jsonSchema, NoObjectGeneratedError, Output, RetryError } from "ai";
 import {
   type IInterviewPlannerService,
@@ -17,6 +18,10 @@ import {
   type PlannedTopicProps,
   TOPIC_PRIORITY,
 } from "@repo/domain";
+import { INTERVIEW_PLANNER_FALLBACK } from "../../prompts/fallbacks/interview-planner.fallback.js";
+import type { FetchedPrompt, ILangfusePromptClient } from "../../prompts/langfuse-prompt-client.js";
+import { PROMPT_KEYS } from "../../prompts/prompt-keys.js";
+import { renderTemplate } from "../../prompts/render-template.js";
 import type { GeminiProviderHandle } from "./provider.js";
 
 type RecordValue = Record<string, unknown>;
@@ -133,28 +138,26 @@ const mapAiError =
     return new PlannerUnknownError(err instanceof Error ? err.message : String(err), "generatePlan");
   };
 
-const buildPrompt = (input: InterviewPlannerInput): string => {
+const fallbackFetchedPrompt = (key: string, fallback: string): FetchedPrompt => ({
+  isFallback: true,
+  handle: {
+    isFallback: true,
+    compile: (variables: Record<string, string>) => renderTemplate(fallback, variables),
+    toJSON: () => ({ kind: "fallback-on-error", key }),
+  },
+});
+
+const buildVariables = (input: InterviewPlannerInput): Record<string, string> => {
   const targetDurationMinutes = input.targetDurationMinutes ?? DEFAULT_TARGET_DURATION_MIN;
   const maxDurationMinutes = input.maxDurationMinutes ?? DEFAULT_MAX_DURATION_MIN;
 
-  return [
-    "You are designing the plan for a short technical screening interview.",
-    `Target duration: ${targetDurationMinutes} minutes. Maximum duration: ${maxDurationMinutes} minutes.`,
-    "",
-    "Job description:",
-    JSON.stringify(input.jobDescription.serialize(), null, 2),
-    "",
-    "Candidate profile:",
-    JSON.stringify(input.candidateInfo.serialize(), null, 2),
-    "",
-    "Client instructions:",
-    input.clientInstructions.trim() ? input.clientInstructions : "(none)",
-    "",
-    "Produce 3-6 topics. Each topic should include 2-5 questions and a time allocation.",
-    "The total time allocation should fit inside the target duration where possible.",
-    "Use priority 'must_cover' for high-signal topics and 'if_time_permits' for optional topics.",
-    "Put role-critical questions in mustAskQuestions.",
-  ].join("\n");
+  return {
+    target_duration_minutes: String(targetDurationMinutes),
+    max_duration_minutes: String(maxDurationMinutes),
+    job_description_json: JSON.stringify(input.jobDescription.serialize(), null, 2),
+    candidate_profile_json: JSON.stringify(input.candidateInfo.serialize(), null, 2),
+    client_instructions: input.clientInstructions.trim() ? input.clientInstructions : "(none)",
+  };
 };
 
 const liftPlan = (
@@ -182,9 +185,28 @@ const liftPlan = (
 };
 
 export class GeminiInterviewPlannerService implements IInterviewPlannerService {
-  constructor(private readonly handle: GeminiProviderHandle) {}
+  constructor(
+    private readonly handle: GeminiProviderHandle,
+    private readonly prompts: ILangfusePromptClient,
+  ) {}
 
   async generatePlan(input: InterviewPlannerInput): Promise<Result<InterviewPlan, PlannerError>> {
+    const fetched = await this.prompts.getText(PROMPT_KEYS.INTERVIEW_PLANNER, INTERVIEW_PLANNER_FALLBACK);
+    const prompt = await fetched.match({
+      Err: async () => fallbackFetchedPrompt(PROMPT_KEYS.INTERVIEW_PLANNER, INTERVIEW_PLANNER_FALLBACK),
+      Ok: async (value) => value,
+    });
+    const compiledPrompt = prompt.handle.compile(buildVariables(input));
+    const telemetryMetadata: Record<string, AttributeValue> = {
+      interviewId: input.interviewId,
+      targetDurationMinutes: input.targetDurationMinutes ?? DEFAULT_TARGET_DURATION_MIN,
+      maxDurationMinutes: input.maxDurationMinutes ?? DEFAULT_MAX_DURATION_MIN,
+    };
+
+    if (!prompt.isFallback) {
+      telemetryMetadata["langfusePrompt"] = prompt.handle.toJSON() as AttributeValue;
+    }
+
     return Result.tryAsyncCatch(
       () =>
         generateText({
@@ -194,15 +216,11 @@ export class GeminiInterviewPlannerService implements IInterviewPlannerService {
             name: "InterviewPlan",
             description: "Structured plan for a screening interview scoped to the given job and candidate.",
           }),
-          prompt: buildPrompt(input),
+          prompt: compiledPrompt,
           experimental_telemetry: {
             isEnabled: true,
             functionId: "GeminiInterviewPlannerService.generatePlan",
-            metadata: {
-              interviewId: input.interviewId,
-              targetDurationMinutes: input.targetDurationMinutes ?? DEFAULT_TARGET_DURATION_MIN,
-              maxDurationMinutes: input.maxDurationMinutes ?? DEFAULT_MAX_DURATION_MIN,
-            },
+            metadata: telemetryMetadata,
           },
         }),
       mapAiError(input.interviewId),

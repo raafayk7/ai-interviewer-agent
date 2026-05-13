@@ -7,6 +7,11 @@ import {
   geminiProviderFromEnv,
   GeminiInterviewPlannerService,
 } from "../infrastructure/services/gemini/index.js";
+import {
+  langfusePromptClientFromEnv,
+  NullLangfusePromptClient,
+  type ILangfusePromptClient,
+} from "../infrastructure/prompts/langfuse-prompt-client.js";
 
 const require = createRequire(import.meta.url);
 
@@ -30,6 +35,11 @@ export function buildGenerateInterviewPlanDeps(
     throw new Error(`Boot failed: ${geminiHandle.unwrapErr().message}`);
   }
 
+  const promptClientResult = langfusePromptClientFromEnv(env);
+  const promptClient: ILangfusePromptClient = promptClientResult.isOk()
+    ? promptClientResult.unwrap()
+    : new NullLangfusePromptClient();
+
   const db: Database =
     options.db ??
     (
@@ -37,7 +47,7 @@ export function buildGenerateInterviewPlanDeps(
     ).db;
 
   const interviews = new DrizzleInterviewRepository(db);
-  const planner = new GeminiInterviewPlannerService(geminiHandle.unwrap());
+  const planner = new GeminiInterviewPlannerService(geminiHandle.unwrap(), promptClient);
 
   return {
     buildUseCase: () => new GenerateInterviewPlanUseCase(interviews, planner),

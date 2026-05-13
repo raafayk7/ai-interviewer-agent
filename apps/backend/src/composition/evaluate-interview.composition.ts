@@ -7,6 +7,11 @@ import {
   geminiProviderFromEnv,
   GeminiInterviewEvaluatorService,
 } from "../infrastructure/services/gemini/index.js";
+import {
+  langfusePromptClientFromEnv,
+  NullLangfusePromptClient,
+  type ILangfusePromptClient,
+} from "../infrastructure/prompts/langfuse-prompt-client.js";
 import type { Database } from "../infrastructure/persistence/db.js";
 import {
   DrizzleInterviewRepository,
@@ -44,13 +49,21 @@ export function buildEvaluateInterviewDeps(
     throw new Error(`Boot failed: ${geminiHandleResult.unwrapErr().message}`);
   }
 
+  const promptClientResult = langfusePromptClientFromEnv(env);
+  const promptClient: ILangfusePromptClient = promptClientResult.isOk()
+    ? promptClientResult.unwrap()
+    : new NullLangfusePromptClient();
+
   const db: Database =
     options.db ??
     (require("../infrastructure/persistence/db.js") as typeof import("../infrastructure/persistence/db.js")).db;
 
   const interviews = new DrizzleInterviewRepository(db);
   const reports = new DrizzleReportRepository(db);
-  const evaluator = new GeminiInterviewEvaluatorService(geminiHandleResult.unwrap());
+  const evaluator = new GeminiInterviewEvaluatorService(
+    geminiHandleResult.unwrap(),
+    promptClient,
+  );
 
   return {
     buildEvaluateUseCase: () =>
