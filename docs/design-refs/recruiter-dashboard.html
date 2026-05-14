@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sift — Recruiter Dashboard (visual reference)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://api.fontshare.com/v2/css?f[]=switzer@500,600,700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --background:         oklch(0.165 0.012 250);
+    --foreground:         oklch(0.970 0.005 250);
+    --card:               oklch(0.205 0.012 250);
+    --popover:            oklch(0.220 0.012 250);
+    --primary:            oklch(0.680 0.150 250);
+    --primary-foreground: oklch(0.155 0.012 250);
+    --secondary:          oklch(0.300 0.030 250);
+    --secondary-foreground: oklch(0.940 0.008 250);
+    --muted:              oklch(0.285 0.012 250);
+    --muted-foreground:   oklch(0.720 0.012 250);
+    --accent:             oklch(0.785 0.130 65);
+    --border:             oklch(0.305 0.012 250);
+    --input:              oklch(0.235 0.012 250);
+    --ring:               oklch(0.680 0.150 250);
+
+    /* Recommendation / outcome semantics — see DESIGN.md §2 usage rules */
+    --positive:                     oklch(0.730 0.120 165);
+    --positive-foreground:          oklch(0.180 0.030 165);
+    --attention-warning:            oklch(0.755 0.095 75);
+    --attention-warning-foreground: oklch(0.180 0.020 75);
+    --negative:                     oklch(0.620 0.140 25);
+    --negative-foreground:          oklch(0.985 0.005 25);
+
+    --radius-pill: 9999px;
+    --radius-md: 12px;
+    --radius-sm: 8px;
+    --radius-xs: 4px;
+
+    --font-heading: "Switzer", "Inter", system-ui, sans-serif;
+    --font-body:    "Inter", system-ui, sans-serif;
+    --font-mono:    "JetBrains Mono", ui-monospace, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+  h1, h2, h3, h4 { font-family: var(--font-heading); font-weight: 600; letter-spacing: -0.012em; }
+
+  .app {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    min-height: 100vh;
+  }
+
+  /* Side rail */
+  .rail {
+    border-right: 1px solid var(--border);
+    background: var(--background);
+    padding: 20px 16px;
+    display: flex; flex-direction: column;
+    gap: 24px;
+  }
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    padding: 4px 8px;
+  }
+  .brand .mark {
+    width: 24px; height: 24px;
+    border-radius: var(--radius-pill);
+    background: radial-gradient(circle at 35% 30%, var(--accent), oklch(0.55 0.14 60));
+    box-shadow: 0 0 14px oklch(0.7 0.18 65 / 0.55);
+  }
+  .brand .name {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: -0.01em;
+  }
+  .nav { display: flex; flex-direction: column; gap: 2px; }
+  .nav a {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px;
+    color: var(--muted-foreground);
+    text-decoration: none;
+    border-radius: var(--radius-sm);
+    font-size: 13.5px;
+  }
+  .nav a:hover { background: var(--muted); color: var(--foreground); }
+  .nav a.active { background: var(--secondary); color: var(--foreground); }
+  .nav .dot {
+    width: 6px; height: 6px;
+    border-radius: var(--radius-pill);
+    background: var(--muted-foreground);
+  }
+  .nav a.active .dot { background: var(--primary); }
+
+  .section-label {
+    font-size: 11px;
+    color: var(--muted-foreground);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 0 10px 6px;
+  }
+
+  .me {
+    margin-top: auto;
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px;
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+    color: var(--muted-foreground);
+  }
+  .avatar {
+    width: 28px; height: 28px;
+    border-radius: var(--radius-pill);
+    background: var(--secondary);
+    display: grid; place-items: center;
+    color: var(--foreground); font-weight: 600; font-size: 12px;
+  }
+
+  /* Main */
+  .main { padding: 28px 40px 64px; max-width: 1400px; }
+
+  .header {
+    display: flex; justify-content: space-between; align-items: end;
+    gap: 24px; margin-bottom: 24px;
+  }
+  .header h1 { font-size: 28px; }
+  .header .sub { color: var(--muted-foreground); margin-top: 4px; font-size: 13.5px; }
+  .header .actions { display: flex; gap: 8px; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px;
+    border-radius: var(--radius-pill);
+    font-size: 13.5px; font-weight: 500;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: background 120ms ease-out, color 120ms ease-out;
+    font-family: var(--font-body);
+  }
+  .btn.primary { background: var(--primary); color: var(--primary-foreground); }
+  .btn.primary:hover { background: oklch(0.72 0.16 250); }
+  .btn.ghost { background: transparent; color: var(--foreground); border-color: var(--border); }
+  .btn.ghost:hover { background: var(--card); }
+
+  /* Filter row */
+  .filters {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 16px; flex-wrap: wrap;
+  }
+  .search {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 14px;
+    background: var(--input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    color: var(--muted-foreground);
+    min-width: 280px;
+  }
+  .search input {
+    background: transparent; border: 0; outline: 0;
+    color: var(--foreground); font: inherit;
+    flex: 1;
+  }
+  .search input::placeholder { color: var(--muted-foreground); }
+
+  .chip {
+    padding: 6px 12px;
+    border-radius: var(--radius-pill);
+    background: var(--secondary);
+    color: var(--secondary-foreground);
+    font-size: 12.5px; font-weight: 500;
+    border: 1px solid transparent;
+    cursor: pointer;
+  }
+  .chip.outline { background: transparent; border-color: var(--border); color: var(--muted-foreground); }
+  .chip:hover { background: var(--muted); color: var(--foreground); }
+
+  /* Table */
+  .table-wrap {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  th, td {
+    text-align: left;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13.5px;
+    vertical-align: middle;
+  }
+  thead th {
+    background: var(--popover);
+    color: var(--muted-foreground);
+    font-weight: 500;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr:hover { background: oklch(0.225 0.012 250); cursor: pointer; }
+
+  .candidate-cell { display: flex; align-items: center; gap: 12px; }
+  .candidate-cell .avatar { width: 32px; height: 32px; }
+  .candidate-cell .name { color: var(--foreground); font-weight: 600; font-family: var(--font-heading); font-size: 14.5px; }
+  .candidate-cell .role { color: var(--muted-foreground); font-size: 12.5px; margin-top: 1px; }
+  .id-mono { font-family: var(--font-mono); color: var(--muted-foreground); font-size: 12px; }
+
+  /* Status pills */
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px 4px 8px;
+    border-radius: var(--radius-pill);
+    font-size: 12px; font-weight: 500;
+    background: var(--muted); color: var(--muted-foreground);
+  }
+  .pill::before {
+    content: ""; width: 6px; height: 6px; border-radius: var(--radius-pill);
+    background: currentColor;
+  }
+  /* Status pills (state of the interview, not an outcome) */
+  .pill.scheduled  { color: oklch(0.78 0.10 250); background: oklch(0.30 0.06 250 / 0.55); }
+  .pill.live       { color: var(--accent); background: oklch(0.40 0.10 65 / 0.30); }
+  .pill.live::before { animation: live-blip 1.4s ease-in-out infinite; }
+  .pill.processing { color: var(--muted-foreground); background: var(--muted); }
+  .pill.ready      { color: var(--foreground); background: var(--secondary); }
+  .pill.flagged    { color: var(--attention-warning); background: oklch(0.40 0.08 75 / 0.30); }
+  @keyframes live-blip { 0%,100% { opacity: 1 } 50% { opacity: 0.4 } }
+
+  /* Recommendation pills — bound to ADR-015 rubric:
+     Report.overallRecommendation: "advance" | "hold" | "reject"  */
+  .rec {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 12px;
+    border-radius: var(--radius-pill);
+    font-size: 12px; font-weight: 600;
+    letter-spacing: 0.02em;
+    font-family: var(--font-body);
+  }
+  .rec.advance { color: var(--positive);          background: oklch(0.40 0.07 165 / 0.32); }
+  .rec.hold    { color: var(--attention-warning); background: oklch(0.40 0.08 75  / 0.30); }
+  .rec.reject  { color: var(--negative);          background: oklch(0.40 0.08 25  / 0.32); }
+  .rec.pending { color: var(--muted-foreground);  background: transparent; font-weight: 400; padding-left: 0; }
+
+  .ts { color: var(--muted-foreground); font-variant-numeric: tabular-nums; font-size: 12.5px; }
+
+  /* Empty / loading skeletons row */
+  .skeleton-row td { padding: 14px 16px; }
+  .skel {
+    height: 12px;
+    background: linear-gradient(90deg,
+      var(--muted) 0%,
+      oklch(0.34 0.012 250) 50%,
+      var(--muted) 100%);
+    background-size: 200% 100%;
+    border-radius: var(--radius-xs);
+    animation: shimmer 1.6s linear infinite;
+  }
+  @keyframes shimmer { 0% { background-position: 200% 0 } 100% { background-position: -200% 0 } }
+  .skel.w50  { width: 50%; }
+  .skel.w70  { width: 70%; }
+  .skel.w30  { width: 30%; }
+
+  /* Footer summary */
+  .summary {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 16px;
+    color: var(--muted-foreground);
+    font-size: 12.5px;
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+    <aside class="rail">
+      <div class="brand">
+        <span class="mark"></span>
+        <span class="name">Sift</span>
+      </div>
+
+      <nav class="nav" aria-label="Primary">
+        <span class="section-label">Workspace</span>
+        <a class="active" href="#"><span class="dot"></span> Interviews</a>
+        <a href="#"><span class="dot"></span> Candidates</a>
+        <a href="#"><span class="dot"></span> Job descriptions</a>
+        <a href="#"><span class="dot"></span> Reports</a>
+      </nav>
+
+      <div class="me">
+        <div class="avatar">RK</div>
+        <div>
+          <div style="color:var(--foreground); font-weight:500; font-size:13px">Raafay Kazmi</div>
+          <div style="font-size:11.5px">Carbonteq</div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="header">
+        <div>
+          <h1>Interviews</h1>
+          <div class="sub">12 in progress · 4 reports waiting on review</div>
+        </div>
+        <div class="actions">
+          <button class="btn ghost">Import CSV</button>
+          <button class="btn primary">+ New interview</button>
+        </div>
+      </div>
+
+      <div class="filters">
+        <label class="search">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input type="search" placeholder="Search by candidate, role, or ID" />
+        </label>
+        <button class="chip">All</button>
+        <button class="chip outline">Scheduled</button>
+        <button class="chip outline">Live</button>
+        <button class="chip outline">Report ready</button>
+        <button class="chip outline">Flagged</button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:34%">Candidate</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Recommendation</th>
+              <th>Updated</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <div class="candidate-cell">
+                  <div class="avatar">EM</div>
+                  <div>
+                    <div class="name">Elena Marquez</div>
+                    <div class="role">Senior Backend · Node / Postgres</div>
+                  </div>
+                </div>
+              </td>
+              <td>Platform Eng II</td>
+              <td><span class="pill ready">Report ready</span></td>
+              <td><span class="rec advance">Advance</span></td>
+              <td class="ts">2m ago</td>
+              <td><span class="id-mono">CAND_8e2f1a</span></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="candidate-cell">
+                  <div class="avatar">JT</div>
+                  <div>
+                    <div class="name">Jonas Tewolde</div>
+                    <div class="role">Full-stack · React / Go</div>
+                  </div>
+                </div>
+              </td>
+              <td>Product Eng</td>
+              <td><span class="pill live">Live now</span></td>
+              <td><span class="rec pending">—</span></td>
+              <td class="ts">12:43 elapsed</td>
+              <td><span class="id-mono">CAND_d40b27</span></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="candidate-cell">
+                  <div class="avatar">AS</div>
+                  <div>
+                    <div class="name">Aarav Shah</div>
+                    <div class="role">Backend · Python / Kafka</div>
+                  </div>
+                </div>
+              </td>
+              <td>Senior Eng, Data</td>
+              <td><span class="pill scheduled">Scheduled</span></td>
+              <td><span class="rec pending">—</span></td>
+              <td class="ts">Tomorrow, 10:00</td>
+              <td><span class="id-mono">CAND_7c1ee3</span></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="candidate-cell">
+                  <div class="avatar">PV</div>
+                  <div>
+                    <div class="name">Priya Vasquez</div>
+                    <div class="role">Mobile · React Native</div>
+                  </div>
+                </div>
+              </td>
+              <td>Mobile Eng II</td>
+              <td><span class="pill flagged">Transcript flagged</span></td>
+              <td><span class="rec hold">Hold</span></td>
+              <td class="ts">17m ago</td>
+              <td><span class="id-mono">CAND_4b9a0c</span></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="candidate-cell">
+                  <div class="avatar">DK</div>
+                  <div>
+                    <div class="name">Daniela Krause</div>
+                    <div class="role">Backend · Rust / Postgres</div>
+                  </div>
+                </div>
+              </td>
+              <td>Platform Eng II</td>
+              <td><span class="pill processing">Generating report</span></td>
+              <td><span class="rec pending">—</span></td>
+              <td class="ts">just now</td>
+              <td><span class="id-mono">CAND_1f73d8</span></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="candidate-cell">
+                  <div class="avatar">MC</div>
+                  <div>
+                    <div class="name">Marcus Chen</div>
+                    <div class="role">Backend · Java / Spring</div>
+                  </div>
+                </div>
+              </td>
+              <td>Senior Eng, Backend</td>
+              <td><span class="pill ready">Report ready</span></td>
+              <td><span class="rec reject">Reject</span></td>
+              <td class="ts">1h ago</td>
+              <td><span class="id-mono">CAND_3a82e5</span></td>
+            </tr>
+            <tr class="skeleton-row" aria-hidden="true">
+              <td>
+                <div class="candidate-cell">
+                  <div class="avatar"></div>
+                  <div style="flex:1">
+                    <div class="skel w50" style="height:14px; margin-bottom:6px"></div>
+                    <div class="skel w70"></div>
+                  </div>
+                </div>
+              </td>
+              <td><div class="skel w70"></div></td>
+              <td><div class="skel w50" style="border-radius:9999px; height:18px"></div></td>
+              <td><div class="skel w50" style="border-radius:9999px; height:18px"></div></td>
+              <td><div class="skel w50"></div></td>
+              <td><div class="skel w70"></div></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="summary">
+          <span>Showing 6 of 27 interviews</span>
+          <span>Loading more…</span>
+        </div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

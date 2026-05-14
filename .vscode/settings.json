@@ -1,0 +1,6 @@
+{
+  "// Tailwind v4 directives": "Stops the built-in CSS language server flagging @theme, @apply, @source, @custom-variant, @utility as 'unknown at-rule'. Install the official 'Tailwind CSS IntelliSense' extension for full awareness; this setting is the universal fallback.",
+  "css.lint.unknownAtRules": "ignore",
+  "scss.lint.unknownAtRules": "ignore",
+  "less.lint.unknownAtRules": "ignore"
+}

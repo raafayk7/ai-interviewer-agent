@@ -1,86 +1,206 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
+/* ─────────────────────────────────────────────────────────────────────────
+   Sift design tokens — see docs/DESIGN.md §2 (palette) + §4 (radius) + §3 (type)
+   Token discipline is enforced by ADR-025: no raw hex literals, no Tailwind
+   color scales in component code. Semantic tokens only.
+   ───────────────────────────────────────────────────────────────────────── */
 
+/* Dark — canonical. No data-theme attribute = dark. */
 :root {
-  --radius: 0.625rem;
+  /* Surfaces */
+  --background:                   oklch(0.165 0.012 250);
+  --foreground:                   oklch(0.970 0.005 250);
+  --card:                         oklch(0.205 0.012 250);
+  --card-foreground:              oklch(0.970 0.005 250);
+  --popover:                      oklch(0.220 0.012 250);
+  --popover-foreground:           oklch(0.970 0.005 250);
 
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  /* Cool primary — recruiter chrome, links, focus, candidate's voice */
+  --primary:                      oklch(0.680 0.150 250);
+  --primary-foreground:           oklch(0.155 0.012 250);
+
+  /* Secondary — quieter cool, used for chips/pills inheriting primary hue */
+  --secondary:                    oklch(0.300 0.030 250);
+  --secondary-foreground:         oklch(0.940 0.008 250);
+
+  /* Muted — surface tints, dividers between zones */
+  --muted:                        oklch(0.285 0.012 250);
+  --muted-foreground:             oklch(0.720 0.012 250);
+
+  /* Accent — Sift's warm presence; reserved for AI moments only (ADR-025) */
+  --accent:                       oklch(0.785 0.130 65);
+  --accent-foreground:            oklch(0.180 0.020 65);
+
+  /* Recommendation / outcome semantics — bound to ADR-015 rubric */
+  --positive:                     oklch(0.730 0.120 165);
+  --positive-foreground:          oklch(0.180 0.030 165);
+  --attention-warning:            oklch(0.755 0.095 75);
+  --attention-warning-foreground: oklch(0.180 0.020 75);
+  --negative:                     oklch(0.620 0.140 25);
+  --negative-foreground:          oklch(0.985 0.005 25);
+
+  /* Destructive — irreversible actions only (ADR-025 fenced usage) */
+  --destructive:                  oklch(0.605 0.220 25);
+  --destructive-foreground:       oklch(0.985 0.005 25);
+
+  /* Borders / inputs / focus ring */
+  --border:                       oklch(0.305 0.012 250);
+  --input:                        oklch(0.235 0.012 250);
+  --ring:                         oklch(0.680 0.150 250);
+
+  /* Voice / AI semantic tokens */
+  --voice-active:                 oklch(0.680 0.150 250);
+  --voice-listening:              oklch(0.520 0.080 250);
+  --ai-thinking:                  oklch(0.700 0.110 65);
+  --transcript-candidate:         oklch(0.760 0.090 250);
+  --transcript-ai:                oklch(0.820 0.110 65);
+
+  /* Orb halo — used only inside the VoicePresence composite (ADR-026) */
+  --orb-core:                     oklch(0.860 0.140 65);
+  --orb-halo:                     oklch(0.680 0.180 65 / 0.45);
+
+  /* Radius tiers — DESIGN.md §4 hard rule */
+  --radius-pill:                  9999px;
+  --radius-md:                    12px;
+  --radius-sm:                    8px;
+  --radius-xs:                    4px;
+
+  /* Font family fallback chains. Switzer is loaded via Fontshare <link>;
+     Inter and JetBrains Mono are next/font hashed CSS vars set on <html>. */
+  --font-switzer:                 "Switzer", ui-sans-serif, system-ui, sans-serif;
 }
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+/* Light — always shipped at parity for accessibility (ADR-025) */
+:root[data-theme="light"] {
+  --background:                   oklch(0.992 0.003 250);
+  --foreground:                   oklch(0.220 0.012 250);
+  --card:                         oklch(1 0 0);
+  --card-foreground:              oklch(0.220 0.012 250);
+  --popover:                      oklch(1 0 0);
+  --popover-foreground:           oklch(0.220 0.012 250);
+
+  --primary:                      oklch(0.510 0.155 250);
+  --primary-foreground:           oklch(0.985 0.003 250);
+
+  --secondary:                    oklch(0.945 0.012 250);
+  --secondary-foreground:         oklch(0.260 0.020 250);
+
+  --muted:                        oklch(0.960 0.005 250);
+  --muted-foreground:             oklch(0.470 0.012 250);
+
+  --accent:                       oklch(0.685 0.140 65);
+  --accent-foreground:            oklch(0.985 0.005 65);
+
+  --positive:                     oklch(0.560 0.135 165);
+  --positive-foreground:          oklch(0.985 0.005 165);
+  --attention-warning:            oklch(0.650 0.100 75);
+  --attention-warning-foreground: oklch(0.985 0.005 75);
+  --negative:                     oklch(0.520 0.155 25);
+  --negative-foreground:          oklch(0.985 0.005 25);
+
+  --destructive:                  oklch(0.555 0.225 25);
+  --destructive-foreground:       oklch(0.985 0.005 25);
+
+  --border:                       oklch(0.915 0.005 250);
+  --input:                        oklch(0.945 0.005 250);
+  --ring:                         oklch(0.510 0.155 250);
+
+  --voice-active:                 oklch(0.510 0.155 250);
+  --voice-listening:              oklch(0.620 0.080 250);
+  --ai-thinking:                  oklch(0.610 0.120 65);
+  --transcript-candidate:         oklch(0.380 0.090 250);
+  --transcript-ai:                oklch(0.450 0.140 65);
+
+  --orb-core:                     oklch(0.770 0.150 65);
+  --orb-halo:                     oklch(0.685 0.190 65 / 0.45);
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Tailwind v4 @theme inline — exposes every semantic token as a utility:
+   bg-primary, text-positive, rounded-pill, font-heading, etc.
+   ───────────────────────────────────────────────────────────────────────── */
 
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  /* Colors */
+  --color-background:                   var(--background);
+  --color-foreground:                   var(--foreground);
+  --color-card:                         var(--card);
+  --color-card-foreground:              var(--card-foreground);
+  --color-popover:                      var(--popover);
+  --color-popover-foreground:           var(--popover-foreground);
+  --color-primary:                      var(--primary);
+  --color-primary-foreground:           var(--primary-foreground);
+  --color-secondary:                    var(--secondary);
+  --color-secondary-foreground:         var(--secondary-foreground);
+  --color-muted:                        var(--muted);
+  --color-muted-foreground:             var(--muted-foreground);
+  --color-accent:                       var(--accent);
+  --color-accent-foreground:            var(--accent-foreground);
+  --color-positive:                     var(--positive);
+  --color-positive-foreground:          var(--positive-foreground);
+  --color-attention-warning:            var(--attention-warning);
+  --color-attention-warning-foreground: var(--attention-warning-foreground);
+  --color-negative:                     var(--negative);
+  --color-negative-foreground:          var(--negative-foreground);
+  --color-destructive:                  var(--destructive);
+  --color-destructive-foreground:       var(--destructive-foreground);
+  --color-border:                       var(--border);
+  --color-input:                        var(--input);
+  --color-ring:                         var(--ring);
+  --color-voice-active:                 var(--voice-active);
+  --color-voice-listening:              var(--voice-listening);
+  --color-ai-thinking:                  var(--ai-thinking);
+  --color-transcript-candidate:         var(--transcript-candidate);
+  --color-transcript-ai:                var(--transcript-ai);
+  --color-orb-core:                     var(--orb-core);
+  --color-orb-halo:                     var(--orb-halo);
 
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
+  /* Radius */
+  --radius-pill:                        var(--radius-pill);
+  --radius-md:                          var(--radius-md);
+  --radius-sm:                          var(--radius-sm);
+  --radius-xs:                          var(--radius-xs);
+
+  /* Fonts — DESIGN.md §3. The CSS-var names below must match what
+     apps/web/app/layout.tsx assigns via next/font's `variable` option. */
+  --font-sans:                          var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-heading:                       var(--font-switzer);
+  --font-mono:                          var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Skeleton shimmer — used by the Skeleton primitive in @repo/ui */
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@utility animate-shimmer {
+  background-image: linear-gradient(
+    90deg,
+    var(--muted) 25%,
+    color-mix(in oklch, var(--muted) 70%, var(--muted-foreground) 30%) 50%,
+    var(--muted) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    background-image: none;
+    background-color: var(--muted);
+  }
 }
 
 @layer base {
   * {
-    @apply border-border;
+    border-color: var(--border);
   }
   body {
-    @apply bg-background text-foreground;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
   }
 }

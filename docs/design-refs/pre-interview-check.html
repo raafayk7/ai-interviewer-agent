@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sift — Pre-interview Check, Step 2: Audio (visual reference)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://api.fontshare.com/v2/css?f[]=switzer@500,600,700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --background:           oklch(0.165 0.012 250);
+    --foreground:           oklch(0.970 0.005 250);
+    --card:                 oklch(0.205 0.012 250);
+    --muted:                oklch(0.285 0.012 250);
+    --muted-foreground:     oklch(0.720 0.012 250);
+    --border:               oklch(0.305 0.012 250);
+    --input:                oklch(0.235 0.012 250);
+    --primary:              oklch(0.680 0.150 250);
+    --primary-foreground:   oklch(0.155 0.012 250);
+    --secondary:            oklch(0.300 0.030 250);
+    --secondary-foreground: oklch(0.940 0.008 250);
+    --accent:               oklch(0.785 0.130 65);
+    --orb-core:             oklch(0.860 0.140 65);
+    --orb-halo:             oklch(0.680 0.180 65 / 0.45);
+
+    --radius-pill: 9999px;
+    --radius-md: 12px;
+    --radius-sm: 8px;
+
+    --font-heading: "Switzer", "Inter", system-ui, sans-serif;
+    --font-body:    "Inter", system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+  h1, h2, h3 { font-family: var(--font-heading); font-weight: 600; letter-spacing: -0.012em; }
+
+  .stage {
+    min-height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    padding: 24px;
+  }
+
+  /* Top bar — small orb in corner + brand mark */
+  .topbar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 4px 12px;
+  }
+  .brand {
+    display: inline-flex; align-items: center; gap: 10px;
+    color: var(--muted-foreground);
+    font-family: var(--font-heading); font-weight: 600; font-size: 14px;
+  }
+  .small-orb {
+    width: 18px; height: 18px;
+    border-radius: var(--radius-pill);
+    background: radial-gradient(circle at 35% 30%, var(--orb-core), var(--accent));
+    box-shadow: 0 0 12px var(--orb-halo);
+    animation: idle 3s ease-in-out infinite;
+  }
+  @keyframes idle {
+    0%, 100% { transform: scale(0.95); opacity: 0.85; }
+    50%      { transform: scale(1.05); opacity: 1; }
+  }
+  .help { color: var(--muted-foreground); font-size: 13px; }
+
+  /* Centered card column */
+  .center {
+    display: flex; align-items: center; justify-content: center;
+    padding: 48px 16px;
+  }
+  .card {
+    width: 100%;
+    max-width: 560px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 40px 40px 32px;
+  }
+
+  /* Step indicator */
+  .steps {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 28px;
+  }
+  .step {
+    display: inline-flex; align-items: center; gap: 8px;
+    color: var(--muted-foreground);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 500;
+  }
+  .step .dot {
+    width: 22px; height: 22px;
+    border-radius: var(--radius-pill);
+    background: var(--muted);
+    color: var(--muted-foreground);
+    display: grid; place-items: center;
+    font-size: 11px; font-weight: 600;
+  }
+  .step.done .dot { background: var(--secondary); color: var(--secondary-foreground); }
+  .step.current { color: var(--foreground); }
+  .step.current .dot {
+    background: var(--primary); color: var(--primary-foreground);
+    box-shadow: 0 0 0 4px oklch(0.68 0.15 250 / 0.16);
+  }
+  .step .bar {
+    width: 28px; height: 1px; background: var(--border);
+  }
+
+  h2.title {
+    font-size: 24px;
+    line-height: 1.25;
+    margin-bottom: 8px;
+  }
+  p.lede {
+    color: var(--muted-foreground);
+    font-size: 15px;
+    line-height: 1.6;
+    margin-bottom: 32px;
+    max-width: 44ch;
+  }
+
+  /* Audio test panel */
+  .panel {
+    background: var(--input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 24px;
+    display: flex; flex-direction: column; gap: 20px;
+    margin-bottom: 28px;
+  }
+  .panel-row {
+    display: flex; align-items: center; gap: 16px;
+  }
+  .panel .label {
+    color: var(--muted-foreground);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 500;
+    margin-bottom: 8px;
+  }
+  .play-btn {
+    width: 56px; height: 56px;
+    border-radius: var(--radius-pill);
+    border: 0;
+    background: var(--accent);
+    color: oklch(0.18 0.020 65);
+    display: grid; place-items: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: transform 120ms ease-out, box-shadow 120ms ease-out;
+    box-shadow: 0 0 24px oklch(0.7 0.18 65 / 0.35);
+  }
+  .play-btn:hover { transform: scale(1.04); box-shadow: 0 0 32px oklch(0.7 0.18 65 / 0.55); }
+  .play-btn svg { width: 18px; height: 18px; margin-left: 2px; }
+
+  .sample-meta {
+    flex: 1;
+    color: var(--foreground);
+    font-size: 14.5px;
+  }
+  .sample-meta .sub {
+    color: var(--muted-foreground); font-size: 12.5px; margin-top: 2px;
+  }
+
+  /* Volume slider visual */
+  .slider {
+    flex: 1; height: 4px;
+    border-radius: var(--radius-pill);
+    background: var(--muted);
+    position: relative;
+  }
+  .slider::after {
+    content: ""; position: absolute;
+    inset: 0; width: 60%;
+    background: var(--primary);
+    border-radius: var(--radius-pill);
+  }
+  .slider .knob {
+    position: absolute; top: 50%; left: 60%;
+    transform: translate(-50%, -50%);
+    width: 14px; height: 14px;
+    border-radius: var(--radius-pill);
+    background: var(--foreground);
+    border: 2px solid var(--primary);
+  }
+  .vol-icon { color: var(--muted-foreground); }
+
+  /* Divider hairline */
+  .divider {
+    height: 1px; background: var(--border);
+    margin: 0 -24px;
+  }
+
+  /* Confirmation row */
+  .confirm {
+    display: flex; align-items: flex-start; gap: 12px;
+    color: var(--foreground); font-size: 14px;
+    margin-bottom: 28px;
+  }
+  .check {
+    width: 18px; height: 18px;
+    border-radius: 5px;
+    border: 1.5px solid var(--border);
+    background: var(--input);
+    display: grid; place-items: center;
+    flex-shrink: 0; margin-top: 2px;
+  }
+  .check.checked {
+    background: var(--primary); border-color: var(--primary);
+  }
+  .check.checked svg { color: var(--primary-foreground); }
+  .confirm .label-text { color: var(--muted-foreground); font-size: 13.5px; line-height: 1.5; }
+
+  /* Actions */
+  .actions {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 12px;
+  }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 11px 22px;
+    border-radius: var(--radius-pill);
+    font-size: 14px; font-weight: 500;
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-family: var(--font-body);
+    transition: background 120ms ease-out;
+  }
+  .btn.primary { background: var(--primary); color: var(--primary-foreground); }
+  .btn.primary:hover { background: oklch(0.72 0.16 250); }
+  .btn.ghost { background: transparent; color: var(--muted-foreground); }
+  .btn.ghost:hover { color: var(--foreground); }
+
+  /* Bottom hint bar */
+  .footnote {
+    display: flex; justify-content: center;
+    color: var(--muted-foreground); font-size: 12.5px;
+    padding: 16px;
+  }
+</style>
+</head>
+<body>
+  <main class="stage">
+    <header class="topbar">
+      <div class="brand">
+        <span class="small-orb" aria-hidden="true"></span>
+        <span>Sift</span>
+      </div>
+      <a class="help" href="#">Need help?</a>
+    </header>
+
+    <section class="center">
+      <article class="card" aria-labelledby="step-title">
+        <div class="steps" aria-label="Pre-interview check, step 2 of 4">
+          <span class="step done" aria-current="false">
+            <span class="dot">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 5 5L20 7"/></svg>
+            </span>
+            Mic
+          </span>
+          <span class="bar"></span>
+          <span class="step current" aria-current="step">
+            <span class="dot">2</span>
+            Audio
+          </span>
+          <span class="bar"></span>
+          <span class="step">
+            <span class="dot">3</span>
+            Quiet space
+          </span>
+          <span class="bar"></span>
+          <span class="step">
+            <span class="dot">4</span>
+            Begin
+          </span>
+        </div>
+
+        <h2 id="step-title" class="title">Let's make sure you can hear Sift clearly.</h2>
+        <p class="lede">Play the sample below at a comfortable level. The interview uses the same voice — adjusting now means you won't be guessing once it starts.</p>
+
+        <div class="panel">
+          <div class="panel-row">
+            <button class="play-btn" aria-label="Play audio sample">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            </button>
+            <div class="sample-meta">
+              Sample greeting from Sift
+              <div class="sub">~6 seconds · plays once</div>
+            </div>
+          </div>
+
+          <div>
+            <div class="label">System volume</div>
+            <div class="panel-row">
+              <span class="vol-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M16 9a4 4 0 0 1 0 6"/></svg>
+              </span>
+              <div class="slider" role="slider" aria-valuemin="0" aria-valuemax="100" aria-valuenow="60">
+                <span class="knob"></span>
+              </div>
+              <span class="vol-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M16 9a4 4 0 0 1 0 6"/><path d="M19.5 6.5a8 8 0 0 1 0 11"/></svg>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="confirm">
+          <span class="check checked" aria-hidden="true">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 12 5 5L20 7"/></svg>
+          </span>
+          <span class="label-text">I could hear the sample clearly. The volume feels right for a 15-minute conversation.</span>
+        </div>
+
+        <div class="actions">
+          <button class="btn ghost">← Back</button>
+          <button class="btn primary">Continue to step 3</button>
+        </div>
+      </article>
+    </section>
+
+    <footer class="footnote">
+      Step 2 of 4 — your interview hasn't started yet.
+    </footer>
+  </main>
+</body>
+</html>

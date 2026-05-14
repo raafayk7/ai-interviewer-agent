@@ -4,7 +4,16 @@
   "private": true,
   "type": "module",
   "exports": {
+    ".": "./src/index.ts",
     "./lib/cn": "./src/lib/cn.ts",
+    "./primitives/button": "./src/primitives/button/index.ts",
+    "./primitives/badge": "./src/primitives/badge/index.ts",
+    "./primitives/card": "./src/primitives/card/index.ts",
+    "./primitives/input": "./src/primitives/input/index.ts",
+    "./primitives/label": "./src/primitives/label/index.ts",
+    "./primitives/avatar": "./src/primitives/avatar/index.ts",
+    "./primitives/separator": "./src/primitives/separator/index.ts",
+    "./primitives/skeleton": "./src/primitives/skeleton/index.ts",
     "./primitives/*": "./src/primitives/*.tsx",
     "./composites/*": "./src/composites/*.tsx",
     "./styles/*": "./src/styles/*"
@@ -32,6 +41,10 @@
     "vitest": "^3.2.1"
   },
   "dependencies": {
+    "@radix-ui/react-avatar": "^1.1.11",
+    "@radix-ui/react-label": "^2.1.8",
+    "@radix-ui/react-separator": "^1.1.8",
+    "@radix-ui/react-slot": "^1.2.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.14.0",

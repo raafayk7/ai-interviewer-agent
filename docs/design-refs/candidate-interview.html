@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sift — Candidate Interview · transcript-ON variant (visual reference)</title>
+<!--
+  VARIANT NOTE — read before implementing.
+  This mockup renders the AI-speaking state with the live transcript TOGGLED ON
+  to demonstrate the dual-color speaker attribution.
+
+  Per docs/DESIGN.md §7 ("Live transcript display") the canonical default is
+  transcript OFF. The candidate opts in via the pre-interview check (step 4)
+  or the in-session gear menu, and the choice persists across sessions.
+
+  Do NOT infer the default from this file. Implement OFF by default.
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://api.fontshare.com/v2/css?f[]=switzer@500,600,700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --background:           oklch(0.165 0.012 250);
+    --foreground:           oklch(0.970 0.005 250);
+    --card:                 oklch(0.205 0.012 250);
+    --muted:                oklch(0.285 0.012 250);
+    --muted-foreground:     oklch(0.720 0.012 250);
+    --border:               oklch(0.305 0.012 250);
+    --primary:              oklch(0.680 0.150 250);
+    --accent:               oklch(0.785 0.130 65);
+    --voice-active:         oklch(0.680 0.150 250);
+    --transcript-candidate: oklch(0.760 0.090 250);
+    --transcript-ai:        oklch(0.820 0.110 65);
+    --orb-core:             oklch(0.860 0.140 65);
+    --orb-halo:             oklch(0.680 0.180 65 / 0.45);
+
+    --radius-pill: 9999px;
+    --radius-md: 12px;
+
+    --font-heading: "Switzer", "Inter", system-ui, sans-serif;
+    --font-body:    "Inter", system-ui, sans-serif;
+    --font-mono:    "JetBrains Mono", ui-monospace, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.55;
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+
+  .stage {
+    position: relative;
+    height: 100vh;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+  }
+
+  /* Top hairline meta bar — minimal, almost invisible */
+  .meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 32px;
+    color: var(--muted-foreground);
+    font-size: 13px;
+    letter-spacing: 0.01em;
+  }
+  .meta .id {
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .meta .timer {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+  .meta .timer::before {
+    content: "";
+    width: 6px; height: 6px;
+    border-radius: var(--radius-pill);
+    background: var(--accent);
+    box-shadow: 0 0 12px var(--orb-halo);
+  }
+
+  /* Center stage — orb + transcript */
+  .center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 56px;
+    padding: 48px 32px;
+  }
+
+  /* The orb */
+  .orb {
+    position: relative;
+    width: 220px; height: 220px;
+    display: grid; place-items: center;
+  }
+  .orb .halo {
+    position: absolute;
+    inset: -60px;
+    border-radius: var(--radius-pill);
+    background: radial-gradient(circle, var(--orb-halo) 0%, transparent 65%);
+    animation: halo-pulse 1.6s ease-in-out infinite;
+  }
+  .orb .core {
+    width: 140px; height: 140px;
+    border-radius: var(--radius-pill);
+    background: radial-gradient(circle at 35% 30%,
+      var(--orb-core) 0%,
+      var(--accent) 55%,
+      oklch(0.55 0.14 60) 100%);
+    box-shadow:
+      0 0 60px var(--orb-halo),
+      inset 0 0 40px oklch(1 0 0 / 0.18);
+    animation: core-pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes core-pulse {
+    0%, 100% { transform: scale(0.96); }
+    50%      { transform: scale(1.06); }
+  }
+  @keyframes halo-pulse {
+    0%, 100% { opacity: 0.35; transform: scale(0.98); }
+    50%      { opacity: 0.65; transform: scale(1.04); }
+  }
+
+  /* Transcript */
+  .transcript {
+    width: 100%;
+    max-width: 640px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .line {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 12px;
+    align-items: baseline;
+  }
+  .label {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .label.candidate { color: var(--transcript-candidate); }
+  .label.ai        { color: var(--transcript-ai); }
+  .text { color: var(--foreground); font-size: 18px; line-height: 1.6; }
+  .line.streaming .text::after {
+    content: "▍";
+    margin-left: 2px;
+    color: var(--transcript-ai);
+    animation: cursor 1.1s steps(2) infinite;
+    opacity: 0.7;
+  }
+  @keyframes cursor { 50% { opacity: 0; } }
+
+  /* Bottom: candidate audio level */
+  .bottom {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-bottom: 32px;
+    gap: 14px;
+  }
+  .level {
+    width: 360px;
+    height: 3px;
+    background: var(--muted);
+    border-radius: var(--radius-pill);
+    position: relative;
+    overflow: hidden;
+  }
+  .level::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    width: 28%;
+    background: var(--voice-active);
+    border-radius: var(--radius-pill);
+    opacity: 0.7;
+    animation: breath 4s ease-in-out infinite;
+  }
+  @keyframes breath {
+    0%, 100% { opacity: 0.30; width: 8%; }
+    50%      { opacity: 0.70; width: 32%; }
+  }
+  .hint {
+    color: var(--muted-foreground);
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  /* Top-right gear */
+  .gear {
+    position: absolute;
+    top: 16px; right: 24px;
+    width: 36px; height: 36px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--muted-foreground);
+    display: grid; place-items: center;
+    cursor: pointer;
+  }
+  .gear svg { width: 16px; height: 16px; }
+
+  h1, h2, h3 { font-family: var(--font-heading); }
+</style>
+</head>
+<body>
+  <main class="stage">
+    <header class="meta">
+      <span class="id">Interview · CAND_8e2f1a</span>
+      <span class="timer">12:43</span>
+    </header>
+
+    <button class="gear" aria-label="Interview settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1A2 2 0 1 1 4.4 17l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.4.5 1 .9 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/>
+      </svg>
+    </button>
+
+    <section class="center">
+      <div class="orb" aria-label="Sift is speaking">
+        <span class="halo"></span>
+        <span class="core"></span>
+      </div>
+
+      <div class="transcript" aria-live="polite">
+        <div class="line">
+          <span class="label candidate">Candidate ·</span>
+          <span class="text">I led the migration off the legacy queue — we cut publish latency from about two seconds down to a hundred and ten milliseconds.</span>
+        </div>
+        <div class="line streaming">
+          <span class="label ai">Sift ·</span>
+          <span class="text">That's a meaningful jump. Walk me through the failure mode you were most worried about during the cutover</span>
+        </div>
+      </div>
+    </section>
+
+    <footer class="bottom">
+      <div class="level" role="img" aria-label="Microphone level"></div>
+      <span class="hint">Microphone active</span>
+    </footer>
+  </main>
+</body>
+</html>
