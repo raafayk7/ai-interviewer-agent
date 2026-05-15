@@ -14,6 +14,15 @@
     "./primitives/avatar": "./src/primitives/avatar/index.ts",
     "./primitives/separator": "./src/primitives/separator/index.ts",
     "./primitives/skeleton": "./src/primitives/skeleton/index.ts",
+    "./primitives/dialog": "./src/primitives/dialog/index.ts",
+    "./primitives/textarea": "./src/primitives/textarea/index.ts",
+    "./composites/toaster": "./src/composites/toaster/index.tsx",
+    "./composites/soft-block-screen": "./src/composites/soft-block-screen/index.tsx",
+    "./composites/interview-status-badge": "./src/composites/interview-status-badge/index.tsx",
+    "./composites/recommendation-badge": "./src/composites/recommendation-badge/index.tsx",
+    "./composites/file-upload-field": "./src/composites/file-upload-field/index.tsx",
+    "./composites/stepper-header": "./src/composites/stepper-header/index.tsx",
+    "./composites/topic-score-row": "./src/composites/topic-score-row/index.tsx",
     "./primitives/*": "./src/primitives/*.tsx",
     "./composites/*": "./src/composites/*.tsx",
     "./styles/*": "./src/styles/*"
@@ -42,6 +51,7 @@
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.11",
+    "@radix-ui/react-dialog": "^1.1.6",
     "@radix-ui/react-label": "^2.1.8",
     "@radix-ui/react-separator": "^1.1.8",
     "@radix-ui/react-slot": "^1.2.4",

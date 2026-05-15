@@ -1,4 +1,5 @@
 import Fastify from "fastify";
+import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import websocket from "@fastify/websocket";
 import {
@@ -44,6 +45,13 @@ export async function buildApp(options: BuildAppOptions = {}) {
   });
 
   installErrorHandler(app, app.log);
+
+  await app.register(cors, {
+    origin: process.env["CORS_ALLOWED_ORIGINS"]?.split(",").map((s) => s.trim()) ?? [
+      "http://localhost:3000",
+    ],
+    credentials: true,
+  });
 
   await app.register(websocket, {
     options: { maxPayload: 1024 * 1024 },

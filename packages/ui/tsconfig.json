@@ -3,6 +3,8 @@
   "compilerOptions": {
     "rootDir": "src",
     "noEmit": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "strictNullChecks": true,
     "types": ["vitest/globals", "@testing-library/jest-dom"]
   },

@@ -1,6 +1,10 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@source "../../../packages/ui/src/**/*.{ts,tsx}";
+
+@variant pointer-coarse (@media (hover: none) and (pointer: coarse));
+
 /* ─────────────────────────────────────────────────────────────────────────
    Sift design tokens — see docs/DESIGN.md §2 (palette) + §4 (radius) + §3 (type)
    Token discipline is enforced by ADR-025: no raw hex literals, no Tailwind
