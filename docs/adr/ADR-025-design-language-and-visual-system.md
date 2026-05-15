@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted, 2026-05-14.
+Accepted, 2026-05-14. Partially superseded by ADR-028, 2026-05-15. The primary-color, surface-hue, heading-font, mono-font, focus-ring color, and voice-token-hue sub-decisions are superseded. All other bindings (token-discipline, semantic-token-only, light-theme WCAG AA parity, --destructive fencing, outcome-semantic tokens, radius vocabulary, motion philosophy, density scale) remain in force.
 
 ## Context
 

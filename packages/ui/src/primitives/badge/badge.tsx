@@ -22,6 +22,7 @@ export const badgeVariants = cva(
       size: {
         default: "h-6 px-2.5 text-xs",
         sm: "h-5 px-2 text-[11px]",
+        lg: "h-8 px-3.5 text-[13px] font-semibold",
       },
     },
     defaultVariants: { variant: "default", size: "default" },

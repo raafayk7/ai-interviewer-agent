@@ -14,6 +14,15 @@ const LABEL: Record<RecommendationValue, string> = {
   reject: "Reject",
 };
 
-export function RecommendationBadge({ recommendation }: { recommendation: RecommendationValue }) {
-  return <Badge variant={VARIANT[recommendation]}>{LABEL[recommendation]}</Badge>;
+interface RecommendationBadgeProps {
+  recommendation: RecommendationValue;
+  size?: BadgeProps["size"];
+}
+
+export function RecommendationBadge({ recommendation, size }: RecommendationBadgeProps) {
+  return (
+    <Badge variant={VARIANT[recommendation]} size={size}>
+      {LABEL[recommendation]}
+    </Badge>
+  );
 }

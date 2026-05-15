@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Inter, Instrument_Serif, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "@/lib/QueryProvider";
 
@@ -10,7 +10,15 @@ const inter = Inter({
   display: "swap",
 });
 
-const jetbrainsMono = JetBrains_Mono({
+const instrumentSerif = Instrument_Serif({
+  subsets: ["latin"],
+  variable: "--font-switzer",
+  weight: ["400"],
+  style: ["normal", "italic"],
+  display: "swap",
+});
+
+const geistMono = Geist_Mono({
   subsets: ["latin"],
   variable: "--font-jetbrains-mono",
   weight: ["400", "500"],
@@ -31,16 +39,8 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${inter.variable} ${jetbrainsMono.variable}`}
+      className={`${inter.variable} ${instrumentSerif.variable} ${geistMono.variable}`}
     >
-      <head>
-        {/* Switzer is on Fontshare, not Google Fonts — must be loaded via <link>.
-            See docs/DESIGN.md §3. The font-family is exposed as --font-switzer in globals.css. */}
-        <link
-          rel="stylesheet"
-          href="https://api.fontshare.com/v2/css?f[]=switzer@500,600,700&display=swap"
-        />
-      </head>
       <body className="min-h-screen bg-background text-foreground antialiased">
         <QueryProvider>{children}</QueryProvider>
       </body>

@@ -23,7 +23,7 @@ An ADR captures the context and reasoning behind a design choice that constrains
 | [Domain & Application Design](#domain--application-design) | 4 |
 | [Authentication & Security](#authentication--security) | 3 |
 | [Presentation](#presentation) | 1 |
-| [Frontend](#frontend) | 7 |
+| [Frontend](#frontend) | 8 |
 
 ---
 
@@ -94,9 +94,10 @@ An ADR captures the context and reasoning behind a design choice that constrains
 | [ADR-022](ADR-022-use-tanstack-query-for-frontend-server-state.md) | Use TanStack Query v5 for Frontend Server State | Accepted | 2026-05-13 |
 | [ADR-023](ADR-023-adopt-shadcn-ui-radix-tailwind-v4-component-system.md) | Adopt shadcn/ui (Radix + Tailwind v4) for the Frontend Component System | Accepted | 2026-05-13 |
 | [ADR-024](ADR-024-react-hook-form-and-zod-4-for-frontend-forms.md) | Standardise on React Hook Form + Zod 4 for Frontend Forms and Wire Validation | Accepted | 2026-05-13 |
-| [ADR-025](ADR-025-design-language-and-visual-system.md) | Design Language and Visual System ("Quiet Signal") | Accepted | 2026-05-14 |
+| [ADR-025](ADR-025-design-language-and-visual-system.md) | Design Language and Visual System ("Quiet Signal") | Accepted, partially superseded by ADR-028 | 2026-05-14 |
 | [ADR-026](ADR-026-voice-presence-pattern-the-orb.md) | Voice Presence Pattern: The Orb as the Canonical AI Presence Element | Accepted | 2026-05-14 |
 | [ADR-027](ADR-027-candidate-device-support.md) | Candidate Device Support: Desktop-Only for MVP, Soft-Block Mobile | Accepted | 2026-05-14 |
+| [ADR-028](ADR-028-design-refresh-v2-warm-neutral-palette-instrument-serif-petrol-voice-tokens.md) | Design Refresh v2: Warm-Neutral Palette, Instrument Serif Typography, Petrol Voice Tokens | Accepted | 2026-05-15 |
 
 ---
 

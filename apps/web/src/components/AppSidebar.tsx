@@ -28,9 +28,12 @@ export function AppSidebar({ email }: AppSidebarProps) {
 
   return (
     <aside className="flex w-60 flex-col gap-6 border-r border-border bg-background p-5">
-      <div className="flex items-center gap-2.5 px-2 py-1">
-        <span aria-hidden className="size-6 rounded-pill bg-accent shadow-[0_0_14px_var(--orb-halo)]" />
-        <span className="font-heading text-base font-bold tracking-tight">Sift</span>
+      <div className="group flex cursor-pointer items-center gap-2.5 px-2 py-1">
+        <span
+          aria-hidden
+          className="size-6 rounded-pill bg-accent shadow-[0_0_14px_var(--orb-halo)] transition-shadow duration-200 ease-out group-hover:shadow-[0_0_24px_var(--orb-halo)]"
+        />
+        <span className="font-heading text-base italic tracking-tight">Sift</span>
       </div>
       <nav className="flex flex-col gap-0.5">
         {NAV.map((item) => {

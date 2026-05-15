@@ -13,57 +13,57 @@
 
 /* Dark — canonical. No data-theme attribute = dark. */
 :root {
-  /* Surfaces */
-  --background:                   oklch(0.165 0.012 250);
-  --foreground:                   oklch(0.970 0.005 250);
-  --card:                         oklch(0.205 0.012 250);
-  --card-foreground:              oklch(0.970 0.005 250);
-  --popover:                      oklch(0.220 0.012 250);
-  --popover-foreground:           oklch(0.970 0.005 250);
+  /* Surfaces — warm-neutral charcoal (hue 60°, v2 refresh ADR-028) */
+  --background:                   oklch(0.155 0.005 60);
+  --foreground:                   oklch(0.965 0.004 60);
+  --card:                         oklch(0.195 0.005 60);
+  --card-foreground:              oklch(0.965 0.004 60);
+  --popover:                      oklch(0.215 0.005 60);
+  --popover-foreground:           oklch(0.965 0.004 60);
 
-  /* Cool primary — recruiter chrome, links, focus, candidate's voice */
-  --primary:                      oklch(0.680 0.150 250);
-  --primary-foreground:           oklch(0.155 0.012 250);
+  /* Primary — warm cream (was steel blue 250°; see ADR-028) */
+  --primary:                      oklch(0.935 0.020 75);
+  --primary-foreground:           oklch(0.180 0.008 60);
 
-  /* Secondary — quieter cool, used for chips/pills inheriting primary hue */
-  --secondary:                    oklch(0.300 0.030 250);
-  --secondary-foreground:         oklch(0.940 0.008 250);
+  /* Secondary */
+  --secondary:                    oklch(0.285 0.008 60);
+  --secondary-foreground:         oklch(0.940 0.005 60);
 
-  /* Muted — surface tints, dividers between zones */
-  --muted:                        oklch(0.285 0.012 250);
-  --muted-foreground:             oklch(0.720 0.012 250);
+  /* Muted */
+  --muted:                        oklch(0.265 0.005 60);
+  --muted-foreground:             oklch(0.700 0.008 60);
 
-  /* Accent — Sift's warm presence; reserved for AI moments only (ADR-025) */
-  --accent:                       oklch(0.785 0.130 65);
+  /* Accent — the orb; slight chroma bump in v2 (ADR-025 + ADR-028) */
+  --accent:                       oklch(0.795 0.150 65);
   --accent-foreground:            oklch(0.180 0.020 65);
 
   /* Recommendation / outcome semantics — bound to ADR-015 rubric */
-  --positive:                     oklch(0.730 0.120 165);
-  --positive-foreground:          oklch(0.180 0.030 165);
-  --attention-warning:            oklch(0.755 0.095 75);
-  --attention-warning-foreground: oklch(0.180 0.020 75);
-  --negative:                     oklch(0.620 0.140 25);
+  --positive:                     oklch(0.730 0.080 155);
+  --positive-foreground:          oklch(0.180 0.020 155);
+  --attention-warning:            oklch(0.770 0.095 70);
+  --attention-warning-foreground: oklch(0.180 0.020 70);
+  --negative:                     oklch(0.620 0.110 25);
   --negative-foreground:          oklch(0.985 0.005 25);
 
   /* Destructive — irreversible actions only (ADR-025 fenced usage) */
   --destructive:                  oklch(0.605 0.220 25);
   --destructive-foreground:       oklch(0.985 0.005 25);
 
-  /* Borders / inputs / focus ring */
-  --border:                       oklch(0.305 0.012 250);
-  --input:                        oklch(0.235 0.012 250);
-  --ring:                         oklch(0.680 0.150 250);
+  /* Borders / inputs / focus ring — focus ring now warm (ADR-028) */
+  --border:                       oklch(0.285 0.005 60);
+  --input:                        oklch(0.225 0.005 60);
+  --ring:                         oklch(0.650 0.080 70);
 
-  /* Voice / AI semantic tokens */
-  --voice-active:                 oklch(0.680 0.150 250);
-  --voice-listening:              oklch(0.520 0.080 250);
-  --ai-thinking:                  oklch(0.700 0.110 65);
-  --transcript-candidate:         oklch(0.760 0.090 250);
-  --transcript-ai:                oklch(0.820 0.110 65);
+  /* Voice / AI semantic tokens — candidate voice shifts to petrol 210° (ADR-028) */
+  --voice-active:                 oklch(0.700 0.110 210);
+  --voice-listening:              oklch(0.540 0.070 210);
+  --ai-thinking:                  oklch(0.720 0.110 65);
+  --transcript-candidate:         oklch(0.770 0.080 210);
+  --transcript-ai:                oklch(0.830 0.110 65);
 
   /* Orb halo — used only inside the VoicePresence composite (ADR-026) */
-  --orb-core:                     oklch(0.860 0.140 65);
-  --orb-halo:                     oklch(0.680 0.180 65 / 0.45);
+  --orb-core:                     oklch(0.880 0.150 65);
+  --orb-halo:                     oklch(0.700 0.190 65 / 0.50);
 
   /* Radius tiers — DESIGN.md §4 hard rule */
   --radius-pill:                  9999px;
@@ -71,28 +71,27 @@
   --radius-sm:                    8px;
   --radius-xs:                    4px;
 
-  /* Font family fallback chains. Switzer is loaded via Fontshare <link>;
-     Inter and JetBrains Mono are next/font hashed CSS vars set on <html>. */
-  --font-switzer:                 "Switzer", ui-sans-serif, system-ui, sans-serif;
+  /* Font family fallback chains. Instrument Serif + Inter + Geist Mono via next/font. */
+  --font-switzer:                 "Instrument Serif", "Times New Roman", Georgia, serif;
 }
 
-/* Light — always shipped at parity for accessibility (ADR-025) */
+/* Light — always shipped at parity for accessibility (ADR-025; hue-shifted to 60° in v2, ADR-028) */
 :root[data-theme="light"] {
-  --background:                   oklch(0.992 0.003 250);
-  --foreground:                   oklch(0.220 0.012 250);
+  --background:                   oklch(0.992 0.003 60);
+  --foreground:                   oklch(0.220 0.008 60);
   --card:                         oklch(1 0 0);
-  --card-foreground:              oklch(0.220 0.012 250);
+  --card-foreground:              oklch(0.220 0.008 60);
   --popover:                      oklch(1 0 0);
-  --popover-foreground:           oklch(0.220 0.012 250);
+  --popover-foreground:           oklch(0.220 0.008 60);
 
-  --primary:                      oklch(0.510 0.155 250);
-  --primary-foreground:           oklch(0.985 0.003 250);
+  --primary:                      oklch(0.250 0.010 60);
+  --primary-foreground:           oklch(0.985 0.005 60);
 
-  --secondary:                    oklch(0.945 0.012 250);
-  --secondary-foreground:         oklch(0.260 0.020 250);
+  --secondary:                    oklch(0.945 0.005 60);
+  --secondary-foreground:         oklch(0.260 0.008 60);
 
-  --muted:                        oklch(0.960 0.005 250);
-  --muted-foreground:             oklch(0.470 0.012 250);
+  --muted:                        oklch(0.960 0.003 60);
+  --muted-foreground:             oklch(0.470 0.008 60);
 
   --accent:                       oklch(0.685 0.140 65);
   --accent-foreground:            oklch(0.985 0.005 65);
@@ -107,14 +106,14 @@
   --destructive:                  oklch(0.555 0.225 25);
   --destructive-foreground:       oklch(0.985 0.005 25);
 
-  --border:                       oklch(0.915 0.005 250);
-  --input:                        oklch(0.945 0.005 250);
-  --ring:                         oklch(0.510 0.155 250);
+  --border:                       oklch(0.915 0.003 60);
+  --input:                        oklch(0.945 0.003 60);
+  --ring:                         oklch(0.500 0.080 70);
 
-  --voice-active:                 oklch(0.510 0.155 250);
-  --voice-listening:              oklch(0.620 0.080 250);
+  --voice-active:                 oklch(0.510 0.155 210);
+  --voice-listening:              oklch(0.620 0.080 210);
   --ai-thinking:                  oklch(0.610 0.120 65);
-  --transcript-candidate:         oklch(0.380 0.090 250);
+  --transcript-candidate:         oklch(0.380 0.090 210);
   --transcript-ai:                oklch(0.450 0.140 65);
 
   --orb-core:                     oklch(0.770 0.150 65);
@@ -174,6 +173,12 @@
   --font-mono:                          var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
+/* Orb halo pulse — landing page only; motion-safe guard baked in via Tailwind class */
+@keyframes orbHaloPulse {
+  0%, 100% { box-shadow: 0 0 24px var(--orb-halo), 0 0 0 var(--orb-halo); opacity: 0.92; }
+  50%      { box-shadow: 0 0 56px var(--orb-halo), 0 0 96px var(--orb-halo); opacity: 1; }
+}
+
 /* Skeleton shimmer — used by the Skeleton primitive in @repo/ui */
 @keyframes shimmer {
   0%   { background-position: 200% 0; }
@@ -206,5 +211,17 @@
     color: var(--foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+  }
+  /* Instrument Serif italic carries Sift's editorial voice at display sizes */
+  h1, .h-display {
+    font-family: var(--font-heading);
+    font-style: italic;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+  }
+  h2, .h-section {
+    font-family: var(--font-heading);
+    font-weight: 400;
+    letter-spacing: -0.012em;
   }
 }

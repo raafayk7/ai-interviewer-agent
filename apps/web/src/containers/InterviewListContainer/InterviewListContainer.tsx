@@ -50,7 +50,14 @@ export function InterviewListContainer() {
   return (
     <div className="flex flex-col gap-4">
       <StatusFilterChips statusFilter={statusFilter} onChange={setFilter} />
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-1">
+        <div className="grid grid-cols-[2fr_2fr_140px_130px_110px] gap-4 px-5 py-2 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+          <span>Candidate</span>
+          <span>Role</span>
+          <span>Status</span>
+          <span>When</span>
+          <span>ID</span>
+        </div>
         {interviews.map((i) => (
           <InterviewListRow key={i.id} interview={i} />
         ))}
