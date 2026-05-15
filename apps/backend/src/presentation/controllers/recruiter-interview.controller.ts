@@ -8,6 +8,7 @@ import {
   type EvaluateInterviewOutput,
   type GenerateInterviewPlanOutput,
   type GetInterviewByIdOutput,
+  type IssueCandidateLinkOutput,
   type ListInterviewsByRecruiterOutput,
   type ServiceError,
 } from "@repo/application";
@@ -36,6 +37,10 @@ export interface RecruiterInterviewControllerDeps {
   readonly generatePlanUseCase: UseCaseLike<unknown, GenerateInterviewPlanOutput>;
   readonly evaluateInterviewUseCase: UseCaseLike<unknown, EvaluateInterviewOutput>;
   readonly getReportByInterviewIdUseCase: UseCaseLike<unknown, { readonly report: ReportOptionLike }>;
+  readonly issueCandidateLinkUseCase: UseCaseLike<
+    { readonly interviewId: string },
+    IssueCandidateLinkOutput
+  >;
   readonly candidateLink: CandidateLinkIssuer;
   readonly publicBaseUrl: string;
 }
@@ -114,18 +119,28 @@ export class RecruiterInterviewController {
       return;
     }
 
-    const token = this.deps.candidateLink.issue(req.params.id);
-    const candidateUrl = new URL(`/interviews/${req.params.id}/session`, this.deps.publicBaseUrl);
-    candidateUrl.searchParams.set("token", token);
-
     await reply.code(200).send({
       ...result.unwrap(),
-      candidateLink: {
-        url: candidateUrl.toString(),
-        token,
-        expiresInSeconds: this.deps.candidateLink.defaultTtlSeconds,
-      },
+      candidateLink: this.buildCandidateLink(req.params.id),
     });
+  }
+
+  async issueCandidateLink(
+    req: FastifyRequest<{ Params: { id: string } }>,
+    reply: FastifyReply,
+  ): Promise<void> {
+    const owned = await this.getOwnedInterview(req.params.id, req.session!.userId, reply);
+    if (!owned) return;
+
+    const result = await this.deps.issueCandidateLinkUseCase.execute({
+      interviewId: req.params.id,
+    });
+    if (result.isErr()) {
+      sendError(reply, result.unwrapErr());
+      return;
+    }
+
+    await reply.code(200).send(this.buildCandidateLink(req.params.id));
   }
 
   async evaluate(
@@ -175,6 +190,17 @@ export class RecruiterInterviewController {
           },
         }),
     });
+  }
+
+  private buildCandidateLink(interviewId: string): {
+    url: string;
+    token: string;
+    expiresInSeconds: number;
+  } {
+    const token = this.deps.candidateLink.issue(interviewId);
+    const url = new URL(`/interviews/${interviewId}/session`, this.deps.publicBaseUrl);
+    url.searchParams.set("token", token);
+    return { url: url.toString(), token, expiresInSeconds: this.deps.candidateLink.defaultTtlSeconds };
   }
 
   private async getOwnedInterview(

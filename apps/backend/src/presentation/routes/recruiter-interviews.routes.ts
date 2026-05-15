@@ -34,6 +34,11 @@ export const registerRecruiterInterviewRoutes: FastifyPluginAsync<
     (req, reply) => controller.generatePlan(req, reply),
   );
   app.post<{ Params: { id: string } }>(
+    "/interviews/:id/candidate-link",
+    { preHandler: requireRecruiter },
+    (req, reply) => controller.issueCandidateLink(req, reply),
+  );
+  app.post<{ Params: { id: string } }>(
     "/interviews/:id/evaluate",
     { preHandler: requireRecruiter },
     (req, reply) => controller.evaluate(req, reply),

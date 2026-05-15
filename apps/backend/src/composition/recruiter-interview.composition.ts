@@ -5,6 +5,7 @@ import {
   GenerateInterviewPlanUseCase,
   GetInterviewByIdUseCase,
   GetReportByInterviewIdUseCase,
+  IssueCandidateLinkUseCase,
   ListInterviewsByRecruiterUseCase,
 } from "@repo/application";
 import type { Database } from "../infrastructure/persistence/db.js";
@@ -71,6 +72,7 @@ export function buildRecruiterInterviewDeps(
       evaluator: new GeminiInterviewEvaluatorService(geminiHandle, promptClient),
     }),
     getReportByInterviewIdUseCase: new GetReportByInterviewIdUseCase(reports),
+    issueCandidateLinkUseCase: new IssueCandidateLinkUseCase(interviews),
     candidateLink: options.candidateLink,
     publicBaseUrl: env["CANDIDATE_PUBLIC_BASE_URL"] ?? env["BETTER_AUTH_URL"] ?? "http://localhost:3000",
   };

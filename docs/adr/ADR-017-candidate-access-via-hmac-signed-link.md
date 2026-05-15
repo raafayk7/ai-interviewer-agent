@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed. Date: 2026-05-12.
+Accepted, 2026-05-15.
 
 ## Context
 
@@ -18,7 +18,7 @@ Key constraints that drove the choice:
 - Rotation and revocation of all live credentials must be possible without a database table (e.g., on suspected secret leak).
 - No new npm dependencies. Node 22 stdlib (`node:crypto`) ships HMAC-SHA256, `timingSafeEqual`, and `base64url` encoding with no additional surface area to audit or pin.
 
-The implementation lives at `apps/backend/src/infrastructure/auth/candidate-signed-link.ts`. The WebSocket guard lives at `apps/backend/src/presentation/routes/interview-session.ws.ts`. Token issuance happens in the `generatePlan` method of `apps/backend/src/presentation/controllers/recruiter-interview.controller.ts` after the plan generation use case succeeds.
+The implementation lives at `apps/backend/src/infrastructure/auth/candidate-signed-link.ts`. The WebSocket guard lives at `apps/backend/src/presentation/routes/interview-session.ws.ts`. Token issuance happens in two places: the `generatePlan` method of `RecruiterInterviewController` after plan generation succeeds, and the dedicated `issueCandidateLink` method behind `POST /interviews/:id/candidate-link`.
 
 ## Decision
 
@@ -26,7 +26,14 @@ Use stdlib HMAC-SHA256 over a `${interviewId}|${unixExpiry}` payload, base64url-
 
 Token format: `base64url(payload).base64url(hmac_sha256(payload, secret))` where `payload = "${interviewId}|${unixExpiry}"`.
 
-Issuance: after `POST /interviews/:id/plan` succeeds, the `generatePlan` controller method calls `candidateLink.issue(interviewId)` and returns the signed URL to the recruiter as `candidateLink.url` in the response body. The recruiter forwards this URL to the candidate out-of-band.
+Issuance: two endpoints issue candidate links.
+
+1. `POST /interviews/:id/plan` — the `generatePlan` controller method issues a token after the plan generation use case succeeds and returns it to the recruiter as `candidateLink.url` in the response body.
+2. `POST /interviews/:id/candidate-link` — a dedicated re-issuance endpoint (Phase 8+) that mints a fresh 7-day token without touching the interview plan. Restricted to interviews in `SCHEDULED` or `IN_PROGRESS` status; returns HTTP 409 for any other status. Each call produces a new token with a new `exp` value; previously issued tokens remain valid until their individual TTL expires (no revocation per call — only `CANDIDATE_LINK_SECRET` rotation revokes all live tokens).
+
+Multiple concurrent live tokens for the same interview are therefore possible. This is an explicit trade-off: stateless issuance keeps the system simple at the cost of inability to invalidate a single lost link (only full rotation). Acceptable for Phase 7–8; revisit if token-level revocation becomes a requirement.
+
+The recruiter forwards the URL to the candidate out-of-band.
 
 Verification on WebSocket upgrade: the `interview-session.ws.ts` route reads `?token=` from the query string, calls `candidateLink.verify(token)`, and closes the socket with code `1008` (policy violation) on any of: missing token, invalid signature, expired token, or `interviewId` mismatch between token payload and URL path parameter.
 

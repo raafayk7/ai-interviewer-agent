@@ -146,6 +146,11 @@ function makeDeps(overrides: Partial<RecruiterInterviewControllerDeps> = {}): Re
         Result.Ok({ report: Option.Some({ id: "report-1", summary: "great" }) }),
       ),
     },
+    issueCandidateLinkUseCase: {
+      execute: vi.fn().mockResolvedValue(
+        Result.Ok({ interviewId: INTERVIEW_ID, status: "SCHEDULED" }),
+      ),
+    },
     candidateLink: {
       issue: vi.fn().mockReturnValue("token-abc"),
       defaultTtlSeconds: 604800,
@@ -559,5 +564,114 @@ describe("[Integration] RecruiterInterviewController — GET /interviews/:id/rep
     });
 
     expect(response.statusCode).toBe(404);
+  });
+});
+
+// ── POST /interviews/:id/candidate-link ───────────────────────────────────────
+
+describe("[Integration] RecruiterInterviewController — POST /interviews/:id/candidate-link", () => {
+  let app: FastifyInstance;
+
+  afterEach(async () => {
+    await app?.close();
+  });
+
+  it("returns 200 with url, token, and expiresInSeconds on happy path", async () => {
+    const deps = makeDeps();
+    app = await buildTestApp(deps);
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/interviews/${INTERVIEW_ID}/candidate-link`,
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json<{ url: string; token: string; expiresInSeconds: number }>();
+    expect(typeof body.url).toBe("string");
+    expect(body.url).toContain(INTERVIEW_ID);
+    expect(body.url).toContain("token=token-abc");
+    expect(body.token).toBe("token-abc");
+    expect(body.expiresInSeconds).toBe(604800);
+  });
+
+  it("calls candidateLink.issue with the interview id", async () => {
+    const issueSpy = vi.fn().mockReturnValue("token-xyz");
+    const deps = makeDeps({ candidateLink: { issue: issueSpy, defaultTtlSeconds: 604800 } });
+    app = await buildTestApp(deps);
+
+    await app.inject({
+      method: "POST",
+      url: `/interviews/${INTERVIEW_ID}/candidate-link`,
+    });
+
+    expect(issueSpy).toHaveBeenCalledWith(INTERVIEW_ID);
+  });
+
+  it("returns 401 when request is unauthenticated", async () => {
+    const deps = makeDeps();
+    app = await buildTestApp(deps, makeAuthDeps(null));
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/interviews/${INTERVIEW_ID}/candidate-link`,
+    });
+
+    expect(response.statusCode).toBe(401);
+  });
+
+  it("returns 404 when the interview belongs to another recruiter (existence hiding)", async () => {
+    const deps = makeDeps();
+    app = await buildTestApp(deps, makeAuthDeps(OTHER_RECRUITER_ID));
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/interviews/${INTERVIEW_ID}/candidate-link`,
+    });
+
+    expect(response.statusCode).toBe(404);
+    const body = response.json<{ error: { code: string } }>();
+    expect(body.error.code).toBe("INTERVIEW_NOT_FOUND");
+  });
+
+  it("returns 404 when use case returns InterviewNotFoundError", async () => {
+    const notFoundErr = Object.assign(new Error("not found"), {
+      code: "INTERVIEW_NOT_FOUND",
+    }) as ServiceError;
+    const deps = makeDeps({
+      issueCandidateLinkUseCase: {
+        execute: vi.fn().mockResolvedValue(Result.Err(notFoundErr)),
+      },
+    });
+    app = await buildTestApp(deps);
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/interviews/${INTERVIEW_ID}/candidate-link`,
+    });
+
+    expect(response.statusCode).toBe(404);
+    const body = response.json<{ error: { code: string } }>();
+    expect(body.error.code).toBe("INTERVIEW_NOT_FOUND");
+  });
+
+  it("returns 409 when use case returns InvalidInterviewStateTransitionError", async () => {
+    const stateErr = Object.assign(new Error("bad state"), {
+      code: "INVALID_INTERVIEW_STATE_TRANSITION",
+    }) as ServiceError;
+    const deps = makeDeps({
+      issueCandidateLinkUseCase: {
+        execute: vi.fn().mockResolvedValue(Result.Err(stateErr)),
+      },
+    });
+    app = await buildTestApp(deps);
+
+    const response = await app.inject({
+      method: "POST",
+      url: `/interviews/${INTERVIEW_ID}/candidate-link`,
+    });
+
+    expect(response.statusCode).toBe(409);
+    const body = response.json<{ error: { code: string } }>();
+    expect(body.error.code).toBe("INVALID_INTERVIEW_STATE_TRANSITION");
   });
 });

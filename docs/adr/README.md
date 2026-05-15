@@ -44,7 +44,7 @@ An ADR captures the context and reasoning behind a design choice that constrains
 | [ADR-006](ADR-006-interview-duration-soft-target-with-hard-ceiling.md) | Interview Duration Is a Soft Target with a Hard Ceiling Enforced by the System | Accepted | 2026-05-09 |
 | [ADR-010](ADR-010-use-async-iterable-stream-contracts-for-stt-tts-ports.md) | Use AsyncIterable Stream Contracts for STT and TTS Application Ports | Accepted | 2026-05-10 |
 | [ADR-011](ADR-011-adopt-fastify-websocket-v11-for-websocket-transport.md) | Adopt @fastify/websocket v11 for WebSocket Transport in the Voice Pipeline | Accepted | 2026-05-10 |
-| [ADR-013](ADR-013-conduct-interview-orchestration-and-tool-effects.md) | Conduct Interview Orchestration: Tool Effects Persisted on the Aggregate, Per-Turn Persistence, and Agent Tool Surface | Proposed | 2026-05-10 |
+| [ADR-013](ADR-013-conduct-interview-orchestration-and-tool-effects.md) | Conduct Interview Orchestration: Tool Effects Persisted on the Aggregate, Per-Turn Persistence, and Agent Tool Surface | Accepted | 2026-05-15 |
 
 ### Data & Storage
 
@@ -59,9 +59,9 @@ An ADR captures the context and reasoning behind a design choice that constrains
 |---|---|---|---|
 | [ADR-004](ADR-004-use-langfuse-and-opentelemetry-for-llm-observability.md) | Use Langfuse and OpenTelemetry for LLM Observability | Accepted | 2026-05-09 |
 | [ADR-012](ADR-012-define-otel-span-hierarchy-for-voice-pipeline.md) | Define OTel Span Hierarchy for Voice Pipeline Sessions and Turns | Accepted, amended by ADR-014 | 2026-05-10 |
-| [ADR-014](ADR-014-extend-otel-span-hierarchy-with-agent-turn-and-rename-session-span.md) | Extend OTel Span Hierarchy with `interview.turn.agent` and Unify Session Span as `interview.session.agent` | Proposed | 2026-05-10 |
-| [ADR-015](ADR-015-phase-6-evaluation-span-schema-explicit-invocation-and-hardcoded-rubric.md) | Phase 6 Evaluation: Span Schema, Explicit Invocation Policy, and Hardcoded Rubric | Proposed | 2026-05-11 |
-| [ADR-020](ADR-020-host-llm-prompts-in-langfuse-with-code-resident-fallbacks.md) | Host LLM Prompts in Langfuse with Code-Resident Fallbacks | Proposed | 2026-05-13 |
+| [ADR-014](ADR-014-extend-otel-span-hierarchy-with-agent-turn-and-rename-session-span.md) | Extend OTel Span Hierarchy with `interview.turn.agent` and Unify Session Span as `interview.session.agent` | Accepted | 2026-05-15 |
+| [ADR-015](ADR-015-phase-6-evaluation-span-schema-explicit-invocation-and-hardcoded-rubric.md) | Phase 6 Evaluation: Span Schema, Explicit Invocation Policy, and Hardcoded Rubric | Accepted | 2026-05-15 |
+| [ADR-020](ADR-020-host-llm-prompts-in-langfuse-with-code-resident-fallbacks.md) | Host LLM Prompts in Langfuse with Code-Resident Fallbacks | Accepted | 2026-05-13 |
 
 ### Domain & Application Design
 
@@ -69,22 +69,22 @@ An ADR captures the context and reasoning behind a design choice that constrains
 |---|---|---|---|
 | [ADR-008](ADR-008-two-step-orchestration-extract-then-generate-plan.md) | Two-Step Orchestration: Extract Then Generate Plan | Accepted | 2026-05-09 |
 | [ADR-009](ADR-009-document-extraction-telemetry-via-factory-closure-not-port-widening.md) | Document-Extraction Telemetry via Factory Closure, Not Port Widening | Accepted | 2026-05-09 |
-| [ADR-013](ADR-013-conduct-interview-orchestration-and-tool-effects.md) | Conduct Interview Orchestration: Tool Effects Persisted on the Aggregate, Per-Turn Persistence, and Agent Tool Surface | Proposed | 2026-05-10 |
-| [ADR-015](ADR-015-phase-6-evaluation-span-schema-explicit-invocation-and-hardcoded-rubric.md) | Phase 6 Evaluation: Span Schema, Explicit Invocation Policy, and Hardcoded Rubric | Proposed | 2026-05-11 |
+| [ADR-013](ADR-013-conduct-interview-orchestration-and-tool-effects.md) | Conduct Interview Orchestration: Tool Effects Persisted on the Aggregate, Per-Turn Persistence, and Agent Tool Surface | Accepted | 2026-05-15 |
+| [ADR-015](ADR-015-phase-6-evaluation-span-schema-explicit-invocation-and-hardcoded-rubric.md) | Phase 6 Evaluation: Span Schema, Explicit Invocation Policy, and Hardcoded Rubric | Accepted | 2026-05-15 |
 
 ### Authentication & Security
 
 | # | Title | Status | Date |
 |---|---|---|---|
-| [ADR-016](ADR-016-adopt-better-auth-for-recruiter-authentication.md) | Adopt better-auth for Recruiter Authentication | Proposed | 2026-05-12 |
-| [ADR-017](ADR-017-candidate-access-via-hmac-signed-link.md) | Candidate Access via HMAC-Signed Link | Proposed | 2026-05-12 |
-| [ADR-019](ADR-019-ownership-checks-in-presentation-not-application.md) | Recruiter Ownership Checks Live in the Presentation Layer, Not the Application or Domain Layer | Proposed | 2026-05-12 |
+| [ADR-016](ADR-016-adopt-better-auth-for-recruiter-authentication.md) | Adopt better-auth for Recruiter Authentication | Accepted | 2026-05-15 |
+| [ADR-017](ADR-017-candidate-access-via-hmac-signed-link.md) | Candidate Access via HMAC-Signed Link | Accepted | 2026-05-15 |
+| [ADR-019](ADR-019-ownership-checks-in-presentation-not-application.md) | Recruiter Ownership Checks Live in the Presentation Layer, Not the Application or Domain Layer | Accepted | 2026-05-15 |
 
 ### Presentation
 
 | # | Title | Status | Date |
 |---|---|---|---|
-| [ADR-018](ADR-018-http-error-mapping-by-error-code-with-exhaustive-table.md) | HTTP Error Mapping by Error Code String with an Exhaustive Status Table | Proposed | 2026-05-12 |
+| [ADR-018](ADR-018-http-error-mapping-by-error-code-with-exhaustive-table.md) | HTTP Error Mapping by Error Code String with an Exhaustive Status Table | Accepted | 2026-05-15 |
 
 ### Frontend
 

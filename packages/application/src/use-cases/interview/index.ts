@@ -22,3 +22,8 @@ export {
 export { EVALUATION_RUBRIC } from "./evaluation-rubric.js";
 export { assembleInterviewSystemPrompt } from "./system-prompt-assembler.js";
 export type { SystemPromptInput } from "./system-prompt-assembler.js";
+export {
+  IssueCandidateLinkUseCase,
+  type IssueCandidateLinkInput,
+  type IssueCandidateLinkOutput,
+} from "./issue-candidate-link.use-case.js";
