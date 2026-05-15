@@ -37,7 +37,7 @@ export function NewInterviewContainer() {
   return (
     <Dialog open onOpenChange={(open) => { if (!open) close(); }}>
       <DialogContent className="max-w-xl">
-        <DialogHeader>
+        <DialogHeader className="gap-6">
           <DialogTitle>New interview</DialogTitle>
           <StepperHeader steps={steps} currentIndex={stepIndex} />
         </DialogHeader>
