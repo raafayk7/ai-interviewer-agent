@@ -212,16 +212,58 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
   }
-  /* Instrument Serif italic carries Sift's editorial voice at display sizes */
+  /* Browser autofill: override the yellow tint to match our input token */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px var(--input) inset;
+    -webkit-text-fill-color: var(--foreground);
+    caret-color: var(--foreground);
+    transition: background-color 600000s 0s, color 600000s 0s;
+  }
+  /* Instrument Serif type scale — DESIGN.md §3 */
   h1, .h-display {
     font-family: var(--font-heading);
     font-style: italic;
     font-weight: 400;
+    font-size: 2.25rem;
+    line-height: 1;
     letter-spacing: -0.02em;
   }
   h2, .h-section {
     font-family: var(--font-heading);
+    font-style: italic;
     font-weight: 400;
+    font-size: 1.75rem;
+    line-height: 1.1;
     letter-spacing: -0.012em;
+  }
+  h3 {
+    font-family: var(--font-heading);
+    font-weight: 400;
+    font-size: 1.375rem;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+  }
+  h4 {
+    font-family: var(--font-heading);
+    font-weight: 400;
+    font-size: 1.125rem;
+    line-height: 1.35;
+    letter-spacing: -0.005em;
+  }
+  h5 {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 1rem;
+    line-height: 1.4;
+  }
+  h6 {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    letter-spacing: 0.005em;
   }
 }

@@ -24,7 +24,7 @@ export function LoginContainer() {
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
-        <CardTitle className="font-heading text-2xl">Sign in</CardTitle>
+        <CardTitle className="font-heading text-2xl italic">Sign in</CardTitle>
         <CardDescription>Welcome back. Enter your credentials to continue.</CardDescription>
       </CardHeader>
       <form onSubmit={onSubmit} noValidate>

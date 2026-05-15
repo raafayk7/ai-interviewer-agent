@@ -112,3 +112,38 @@ Optional non-blocking style notes from reviewer:
 - ADR-025 Status line updated to "Partially superseded by ADR-028, 2026-05-15" — only the six sub-decisions listed (primary-color, surface-hue, heading-font, mono-font, focus-ring colour, voice-token hue) are superseded; the architectural bindings (token discipline, semantic-only, light-theme parity, radius vocabulary, motion philosophy) remain fully in force and are not re-argued in ADR-028.
 - The v2 adr-judge run confirmed 27 ADRs total; the single violation was intentional (the v2 changes contradicting v1 ADR-025 decisions). All other ADRs cleared.
 - Instrument Serif italic at `h1`/`h2` is baked via `@layer base` (option A from the handoff) — contributors don't need to remember to add `italic` at call sites; the rule applies project-wide.
+
+---
+
+## Follow-up: Font Discipline & Autofill Fixes
+
+Post-commit pass resolving fake-bold synthesis, type-scale violations, and the browser autofill tint.
+
+### Problem
+
+`next/font` loads Instrument Serif at weight 400 only (normal + italic). Any `font-semibold` or `font-bold` on a `font-heading` element forces the browser to synthesize a heavier weight by smearing glyphs — visually worse than native 400, and silent (no console error). The v1 primitives baked `font-semibold` into `CardTitle` and `DialogTitle` defaults, cascading the problem to every call site in the app.
+
+### Files changed
+
+- **`globals.css`:**
+  - Full h1–h6 type scale baked into `@layer base` — explicit `font-size`, `line-height`, and `letter-spacing` per DESIGN.md §3; `h2` now has `font-style: italic` in the base rule; `h3`/`h4` use Instrument Serif regular; `h5`/`h6` drop back to Inter 600.
+  - Browser autofill fix: `-webkit-autofill` selector block with `-webkit-box-shadow: 0 0 0 1000px var(--input) inset` (overrides Chrome/Safari blue tint), `-webkit-text-fill-color: var(--foreground)`, `caret-color: var(--foreground)`, and `transition: background-color 600000s 0s, color 600000s 0s` (covers Firefox and any browser that ignores the box-shadow trick by effectively preventing the autofill background transition from ever completing). Added `:active` pseudo-state to the selector list.
+
+- **`packages/ui/src/primitives/card/card.tsx`:** `CardTitle` — `font-semibold` removed; renders native 400.
+- **`packages/ui/src/primitives/dialog/dialog.tsx`:** `DialogTitle` — `font-semibold` removed, `italic` added; wizard titles now render in Instrument Serif italic 400.
+- **`packages/ui/src/composites/topic-score-row/topic-score-row.tsx`:** Topic name `font-semibold` removed, size bumped `text-sm` → `text-lg`; topic names are heading-tier content and were rendering below readable serif size.
+- **`packages/ui/src/composites/soft-block-screen/soft-block-screen.tsx`:** `font-semibold` stripped from `h2`.
+- **`apps/web/src/components/PageHeader.tsx`:** `font-semibold` stripped; `text-2xl` → `text-4xl` to match the documented h1 = 36px tier (was rendering at h3 size).
+- **`apps/web/src/components/EmptyDashboardState.tsx`:** `font-semibold` stripped from `h2`.
+- **`apps/web/src/containers/InterviewDetailContainer/InterviewDetailContainer.tsx`:** `font-semibold` stripped from candidate name `h2`; `text-xl` → `text-2xl`.
+- **`apps/web/src/containers/LoginContainer/LoginContainer.tsx`:** `italic` added to "Sign in" `CardTitle`.
+- **`apps/web/src/containers/SignupContainer/SignupContainer.tsx`:** `italic` added to "Create an account" `CardTitle`.
+- **`apps/web/src/containers/ProfileContainer/ProfileContainer.tsx`:** `italic` added to "Account" and "Session" `CardTitle` entries.
+
+### Verification
+
+```bash
+pnpm turbo run check-types --filter=web --filter=@repo/ui
+```
+
+Type-check: clean.

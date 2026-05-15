@@ -39,7 +39,7 @@ export function SoftBlockScreen({ audience, className }: SoftBlockScreenProps) {
         aria-hidden
         className="size-10 rounded-pill bg-accent opacity-70 shadow-[0_0_20px_var(--orb-halo)]"
       />
-      <h2 className="font-heading text-2xl font-semibold">{copy.heading}</h2>
+      <h2 className="font-heading text-2xl">{copy.heading}</h2>
       <p className="max-w-md text-base text-muted-foreground">{copy.body}</p>
       <p className="max-w-md text-sm text-muted-foreground">{copy.why}</p>
     </div>

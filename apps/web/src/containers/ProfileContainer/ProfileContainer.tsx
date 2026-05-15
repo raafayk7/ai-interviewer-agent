@@ -23,7 +23,7 @@ export function ProfileContainer() {
     <div className="flex max-w-xl flex-col gap-6">
       <Card>
         <CardHeader>
-          <CardTitle className="font-heading text-lg">Account</CardTitle>
+          <CardTitle className="font-heading text-lg italic">Account</CardTitle>
           <CardDescription>Your sign-in details.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3 text-sm">
@@ -34,7 +34,7 @@ export function ProfileContainer() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="font-heading text-lg">Session</CardTitle>
+          <CardTitle className="font-heading text-lg italic">Session</CardTitle>
           <CardDescription>Sign out of this browser.</CardDescription>
         </CardHeader>
         <CardContent>

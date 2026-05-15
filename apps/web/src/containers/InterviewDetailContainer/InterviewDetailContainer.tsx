@@ -48,7 +48,7 @@ export function InterviewDetailContainer({ interviewId }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h2 className="font-heading text-xl font-semibold">{interview.candidateInfo.fullName}</h2>
+          <h2 className="font-heading text-2xl">{interview.candidateInfo.fullName}</h2>
           <p className="text-sm text-muted-foreground">
             {interview.jobDescription.title} · {interview.jobDescription.company}
           </p>

@@ -24,7 +24,7 @@ export function SignupContainer() {
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
-        <CardTitle className="font-heading text-2xl">Create an account</CardTitle>
+        <CardTitle className="font-heading text-2xl italic">Create an account</CardTitle>
         <CardDescription>Enter your email to get started with Sift.</CardDescription>
       </CardHeader>
       <form onSubmit={onSubmit} noValidate>
