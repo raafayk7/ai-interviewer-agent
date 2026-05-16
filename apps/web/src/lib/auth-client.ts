@@ -7,11 +7,12 @@
  * runtime value, not the declared export type.
  */
 import { createAuthClient } from "better-auth/react";
+import { env } from "./env";
 
 const _raw: any = createAuthClient({
   baseURL:
     typeof window === "undefined"
-      ? "http://localhost:3002"
+      ? env.NEXT_PUBLIC_API_URL
       : window.location.origin,
 });
 

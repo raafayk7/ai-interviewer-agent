@@ -247,9 +247,150 @@ Fix:
 
 ---
 
+## Post-Launch Bug Fixes
+
+Six bugs surfaced during hands-on testing of the full recruiter flow immediately after phase 8 stabilised. All are integration / runtime issues invisible to unit tests and type-checks.
+
+### 1. Interview creation rejected — `uploadedAt: expected date, received string`
+
+Symptom: Clicking "Launch interview" on the wizard review step showed `jdFileRef.uploadedAt: Invalid input: expected date, received string; cvFileRef.uploadedAt: Invalid input: expected date, received string`.
+
+Cause: The backend `FileRefSchema` inside `packages/application/src/dtos/create-interview.dto.ts` used `z.date()` (strict). JSON serialisation converts the frontend's `Date` → ISO string; `z.date()` rejects strings. Every other date field in the same DTO (`scheduledAt`) already used `z.coerce.date()`.
+
+Fix: `create-interview.dto.ts` — changed `uploadedAt: z.date()` → `uploadedAt: z.coerce.date()`.
+
+### 2. Source fix had no effect — compiled `dist/` was stale
+
+Symptom: After fix #1 the error persisted.
+
+Cause: `@repo/application`'s `package.json` exports point to `./dist/index.js`, not the TypeScript source. The backend (`tsx watch`) imports the compiled artifact; editing the `.ts` source has no runtime effect until the package is rebuilt.
+
+Fix: ran `pnpm turbo run build --filter=@repo/application` to recompile the package, then restarted the backend. The `dist/dtos/create-interview.dto.js` now contains `z.coerce.date()`.
+
+Lesson: any change to a non-app workspace package (`@repo/domain`, `@repo/application`) requires an explicit rebuild before the backend dev server picks it up.
+
+### 3. Interview detail page — "Couldn't load interview details. Try again."
+
+Symptom: After a successful launch the browser redirected to `/interviews/:id`, which showed the generic error message. Backend logs confirmed a `200` response for `GET /interviews/:id`.
+
+Cause: `InterviewSchema` in `apps/web/src/types/interview.types.ts` declared `recruiterId: z.string().uuid()`. Better Auth generates user IDs as random base-62 strings (e.g. `GrY4IZbOp8NHpbVv5iFHNjdAnpk7aSVi`), not UUIDs — so every valid 200 response failed Zod schema validation on the frontend, producing a `RESPONSE_VALIDATION` service error that surfaced as the generic error message.
+
+Fix: `interview.types.ts` — `recruiterId: z.string().uuid()` → `recruiterId: z.string()`. The `id` field remains `.uuid()` because interview IDs are generated via Node's `randomUUID()`.
+
+### 4. Candidate magic link pointed to the backend port
+
+Symptom: The share link displayed in `ShareLinkPanel` had the form `http://localhost:3002/interviews/:id/session?token=...` instead of `http://localhost:3000/...`.
+
+Cause: `buildRecruiterInterviewDeps` in `recruiter-interview.composition.ts` resolves `publicBaseUrl` as `CANDIDATE_PUBLIC_BASE_URL ?? BETTER_AUTH_URL ?? "http://localhost:3000"`. `BETTER_AUTH_URL` was already set to `http://localhost:3002` (the backend) in `apps/backend/.env`, so the frontend fallback `"http://localhost:3000"` was never reached.
+
+Fix: added `CANDIDATE_PUBLIC_BASE_URL="http://localhost:3000"` to `apps/backend/.env`. Backend restart required to pick up the env change.
+
+### 5. Status badge stretched to fixed column width
+
+Symptom: The `InterviewStatusBadge` in the interview list appeared as a fixed-width pill matching the `140px` grid column rather than shrinking to fit its label text.
+
+Cause: CSS Grid blockifies `inline-flex` on direct grid children, effectively computing it as `flex`. A `flex` container with no explicit width fills its grid track (140px). The badge `<span>` was a direct child of the row's `grid` Link element.
+
+Fix: `InterviewListRow.tsx` — wrapped `<InterviewStatusBadge>` in a `<div>`. The `<div>` becomes the stretching grid item; the badge inside it is an `inline-flex` child of a block container and takes only its natural content width.
+
+### 6. Status filter chips appeared for statuses with no interviews
+
+Symptom: With a single "Scheduled" interview the dashboard showed chips for "In progress", "Report ready", and "Awaiting evaluation". Clicking any of those chips showed the empty state. Only the "All" and "Scheduled" chips were meaningful.
+
+Cause: `StatusFilterChips` rendered a hardcoded list of five chips with no awareness of the actual data.
+
+Fix (three files):
+- `useInterviewList.ts` — added `availableStatuses: Set<InterviewStatus>` computed from all loaded interviews via `useMemo`.
+- `StatusFilterChips.tsx` — added `availableStatuses: Set<InterviewStatus>` prop; filters the chip list to only show statuses present in the data (the "All" chip is always shown).
+- `InterviewListContainer.tsx` — passes `availableStatuses` to both `StatusFilterChips` instances (loading skeleton and success state).
+
+---
+
 ## Follow-Ups Carried Forward
 
 - `BETTER_AUTH_TRUSTED_ORIGINS` and `CORS_ALLOWED_ORIGINS` should both be wired through `authEnvFrom` / a dedicated env parser before any non-local deployment, instead of relying on the localhost defaults.
 - The `auth-client.ts` hard-coded `:3002` server-render branch (note carried over from the original draft of this doc) should be replaced with a proper env-conditional fallback. A potential approach: parse `NEXT_PUBLIC_API_URL` in `lib/env.ts` and pass it through the structural client type.
 - The composite-only Tailwind classes that the `@source` directive now picks up should be considered intentional. If `packages/ui` grows to include classes that are app-specific (which it should not), the source list will need narrowing rather than broadening.
 - Add a smoke E2E (`pnpm --filter web exec playwright test`) that hits `/dashboard` against a running backend after sign-up — would have caught fixes #4 / #5 / #7 in CI.
+
+---
+
+## 2026-05-16 — Env Hardening + Stubbed Playwright Suite
+
+Two of the carried-forward follow-ups were resolved in this session, one was declined as out of scope, and the smoke-E2E item was downgraded to a tier-2 follow-up (with the tier-1 stubbed surface landed).
+
+### Resolved: Origin/CORS env wiring (was follow-up #1)
+
+`BETTER_AUTH_TRUSTED_ORIGINS` and `CORS_ALLOWED_ORIGINS` now flow through the composition layer in the same `Result<…, Error>` shape as the existing auth env parsing. Both are **required in production** — backend boot fails with a clear `Boot failed: …` if either is absent under `NODE_ENV=production`. In dev they both default to `["http://localhost:3000"]`.
+
+Concrete changes:
+
+- `apps/backend/src/infrastructure/auth/auth-env.ts` — `AuthEnv` gained `trustedOrigins: readonly string[]`. New `parseTrustedOrigins` helper splits the comma-separated list, trims, and rejects an empty/whitespace-only value. Production-vs-dev branching gates the default.
+- `apps/backend/src/infrastructure/auth/auth.ts` — `AuthConfig.trustedOrigins` is now **required** (was optional with an inline `["http://localhost:3000"]` fallback inside `createAuth`). The fallback's removal forces all callers to go through the parsed env.
+- `apps/backend/src/composition/auth.composition.ts` — destructures `trustedOrigins` from the parsed `AuthEnv` and threads it into `createAuth(...)`.
+- `apps/backend/src/infrastructure/cors/cors-env.ts` (new) — same shape as `auth-env.ts`: `corsEnvFrom(env): Result<{ origins: readonly string[] }, Error>`. Mirrors the auth-env production/dev policy.
+- `apps/backend/src/infrastructure/cors/cors-env.test.ts` (new) — 5 tests covering defaulting, production-required, single-origin, comma-separated parsing, and whitespace-only rejection.
+- `apps/backend/src/app.ts` — replaced the inline `process.env["CORS_ALLOWED_ORIGINS"]?.split(",")…` read at boot with `corsEnvFrom(process.env)`. Failure throws `Boot failed: …` at the composition root, matching the auth-env error path. This is the only `process.env` read in `app.ts` now; everything else is composed in `composition/` files.
+- `apps/backend/src/infrastructure/auth/auth-env.test.ts` — added 5 new tests for `trustedOrigins` (default, production-required, single, comma-separated, whitespace-only). Suite total grew from 7 to 12.
+- `apps/backend/.env.example` — documents `BETTER_AUTH_TRUSTED_ORIGINS` and `CORS_ALLOWED_ORIGINS` with prod-vs-dev semantics.
+
+### Resolved: Hardcoded `:3002` in `auth-client.ts` (was follow-up #2)
+
+`apps/web/src/lib/auth-client.ts` — the server-render `baseURL` branch (`typeof window === "undefined" ? "http://localhost:3002" : window.location.origin`) now reads `env.NEXT_PUBLIC_API_URL` from `lib/env.ts` instead of the hardcoded constant. Removes the deployment trap originally flagged in the "Notes" section of this doc.
+
+### Declined: Composite-only Tailwind class concern (was follow-up #3)
+
+`packages/ui` is consumed by a single app (`apps/web`) and is expected to stay that way for the foreseeable future. The `@source "../../../packages/ui/src/**/*.{ts,tsx}"` directive correctly picks up every class used in composites; no action needed unless a second consumer of `@repo/ui` appears.
+
+### Partially addressed: Playwright E2E (was follow-up #4)
+
+The original plan called for three Playwright specs using `page.route("**/api/auth/**", ...)`. That approach has a fundamental gap: `(recruiter)/layout.tsx` calls `getServerSession()` **server-side**, and the resulting `fetch` runs in the Next.js Node process — `page.route()` cannot intercept it. The three planned specs (auth happy path → dashboard, create-interview wizard, report-viewer) all sit behind that gate.
+
+Chosen scope for this session: **pure-frontend stubbed specs only** — routes that don't sit behind the auth gate. Auth-gated specs are downgraded to a tier-2 follow-up (see below).
+
+Concrete changes:
+
+- `apps/web/playwright.config.ts` (new) — Chromium-only project, `baseURL: http://localhost:3000`, `webServer: pnpm dev` with `reuseExistingServer: !CI`, `retries: 1` and `workers: 1` under `CI`, `trace: "on-first-retry"`, `screenshot: "only-on-failure"`.
+- `apps/web/e2e/landing.spec.ts` (new, 3 tests) — `/` renders Sift hero + both CTAs when anonymous; "Sign in" link → `/login`; "Create an account" link → `/signup`.
+- `apps/web/e2e/login.spec.ts` (new, 6 tests) — field rendering; bad-email validation; empty-password validation; `INVALID_EMAIL_OR_PASSWORD` (stubbed via `page.route("**/api/auth/sign-in/email", …)`) → "Email or password is incorrect."; any other error code → generic fallback; `/signup` link navigation.
+- `apps/web/e2e/signup.spec.ts` (new, 7 tests) — field rendering; bad-email, short-password, password-mismatch validation; `USER_ALREADY_EXISTS` → neutral non-enumerating copy **with an explicit `not.toContainText(/already exists/i)` regression guard against re-introducing the account-enumeration leak**; any other error code → generic fallback; `/login` link navigation.
+- `turbo.json` — added `CI` and `NODE_ENV` to `globalEnv`. Required because the Turbo eslint plugin (`turbo/no-undeclared-env-vars`) flagged `process.env["CI"]` reads in `playwright.config.ts`; `NODE_ENV` is now read by `auth-env.ts` and `cors-env.ts`.
+- `apps/web/src/containers/InterviewListContainer/useInterviewList.ts` — fixed a pre-existing `react-hooks/exhaustive-deps` warning (the `const all = query.data?.interviews ?? []` line allocated a fresh `[]` on every render when `data` was undefined, causing the two downstream `useMemo`s to re-run unnecessarily). Wrapped `all` in its own `useMemo` keyed on `query.data?.interviews`. Was blocking `eslint --max-warnings 0` for the suite once `playwright.config.ts` invalidated the lint cache.
+
+Run command:
+
+```bash
+pnpm --filter web exec playwright install chromium   # one-time, ~113 MB headless shell
+pnpm --filter web exec playwright test
+```
+
+Result: 16/16 specs pass in ~10s. `pnpm dev` is auto-spawned by `webServer`; if a dev server is already running, Playwright reuses it outside CI.
+
+### Implementation note: `getByRole("alert")` and the Next.js route announcer
+
+Next.js injects `<div role="alert" aria-live="assertive" id="__next-route-announcer__"></div>` at the app root for screen-reader route announcements. A naive `page.getByRole("alert")` matches both that and the form's own error `<p role="alert">`, producing a strict-mode violation. The specs scope the locator with `page.locator("form").getByRole("alert")` to constrain the match to the form subtree.
+
+### Implementation note: `CardTitle` is not a semantic heading
+
+`packages/ui/src/primitives/card/card.tsx` renders `CardTitle` as a `<div>`. On `/login` and `/signup`, the `CardTitle` is acting as the page's H1 but assistive tech sees a generic div. The first-pass specs used `getByRole("heading", { name: "Sign in" })` and failed for this reason. They now use text-based queries on the unique `CardDescription` strings ("Welcome back. Enter your credentials to continue.", "Enter your email to get started with Sift.") to detect page identity.
+
+This is a real a11y gap — flagged as a tier-3 follow-up below.
+
+### Verification
+
+```bash
+pnpm turbo run check-types --filter=backend --filter=web --filter=@repo/ui   # passed
+pnpm turbo run lint --filter=backend --filter=web --filter=@repo/ui          # passed (web, ui, backend)
+pnpm turbo run test --filter=backend                                          # 232/232 (was 215; +12 auth-env, +5 cors-env)
+pnpm turbo run test --filter=web                                              # 121/121
+pnpm turbo run test --filter=@repo/ui                                         # 303/303
+pnpm --filter web exec playwright test                                        # 16/16 in ~10s
+```
+
+`@repo/application` still emits two pre-existing lint warnings (`AgentInternalScore`, `AgentNote` unused imports in `evaluate-interview.use-case.test.ts`) from commit `cd320e6`. Unrelated to this session.
+
+### New follow-ups discovered
+
+- **Tier-2 (carried forward):** smoke E2E against a real backend. Needs `apps/web/playwright.config.ts`'s `webServer` array extended with a second entry that boots `apps/backend` against a test database, plus a `.env.e2e` carrying `BETTER_AUTH_SECRET`, `FILE_STORAGE_*`, `CANDIDATE_LINK_SECRET`, and stubbed AI keys. One spec — sign up → land on `/dashboard` empty state — would catch the entire CORS/port/origin bug class (post-merge fixes #4, #5, #7).
+- **Tier-3 (a11y):** `CardTitle` should expose a heading role when used as a page title. Two viable approaches: (a) add an `asChild`/polymorphic prop to `CardTitle` so consumers can render it as `<h1>` on auth pages, or (b) add explicit `<h1>` elements to `/login` and `/signup` above the card. Option (a) is more flexible; option (b) is one-line.
+- **Tier-3 (housekeeping):** the two `@repo/application` lint warnings in `evaluate-interview.use-case.test.ts` should be cleaned up — they pre-date this session and have nothing to do with it, but they're blocking `pnpm turbo run lint` from being green at the monorepo level.

@@ -3,7 +3,8 @@
     "ui-ux-pro-max@ui-ux-pro-max-skill": true,
     "frontend-design@claude-plugins-official": true,
     "skill-creator@claude-plugins-official": true,
-    "adr-kit@rvdbreemen-adr-kit": true
+    "adr-kit@rvdbreemen-adr-kit": true,
+    "playwright@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "rvdbreemen-adr-kit": {

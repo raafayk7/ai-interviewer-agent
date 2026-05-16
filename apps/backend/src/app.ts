@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import websocket from "@fastify/websocket";
+import { corsEnvFrom } from "./infrastructure/cors/cors-env.js";
 import {
   installAuthPlugin,
   type AuthPluginOptions,
@@ -46,10 +47,13 @@ export async function buildApp(options: BuildAppOptions = {}) {
 
   installErrorHandler(app, app.log);
 
+  const corsEnv = corsEnvFrom(process.env);
+  if (corsEnv.isErr()) {
+    throw new Error(`Boot failed: ${corsEnv.unwrapErr().message}`);
+  }
+
   await app.register(cors, {
-    origin: process.env["CORS_ALLOWED_ORIGINS"]?.split(",").map((s) => s.trim()) ?? [
-      "http://localhost:3000",
-    ],
+    origin: [...corsEnv.unwrap().origins],
     credentials: true,
   });
 

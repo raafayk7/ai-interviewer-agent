@@ -76,7 +76,7 @@ export function InterviewListRow({ interview: i }: { interview: Interview }) {
           {i.jobDescription.company} · {planSummary}
         </span>
       </div>
-      <InterviewStatusBadge status={i.status} />
+      <div><InterviewStatusBadge status={i.status} /></div>
       <span className="font-mono text-xs tabular-nums text-muted-foreground">
         {smartTime(i)}
       </span>

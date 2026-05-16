@@ -43,6 +43,67 @@ describe("authEnvFrom", () => {
     });
   });
 
+  describe("BETTER_AUTH_TRUSTED_ORIGINS validation", () => {
+    it("defaults to ['http://localhost:3000'] when absent outside production", () => {
+      const result = authEnvFrom({
+        BETTER_AUTH_SECRET: VALID_SECRET,
+        BETTER_AUTH_URL: VALID_URL,
+      });
+
+      expect(result.isOk()).toBe(true);
+      expect(result.unwrap().trustedOrigins).toEqual(["http://localhost:3000"]);
+    });
+
+    it("returns Err when absent in production", () => {
+      const result = authEnvFrom({
+        BETTER_AUTH_SECRET: VALID_SECRET,
+        BETTER_AUTH_URL: VALID_URL,
+        NODE_ENV: "production",
+      });
+
+      expect(result.isErr()).toBe(true);
+      expect(result.unwrapErr().message).toMatch(/BETTER_AUTH_TRUSTED_ORIGINS/);
+    });
+
+    it("parses a single origin", () => {
+      const result = authEnvFrom({
+        BETTER_AUTH_SECRET: VALID_SECRET,
+        BETTER_AUTH_URL: VALID_URL,
+        BETTER_AUTH_TRUSTED_ORIGINS: "https://app.example.com",
+      });
+
+      expect(result.isOk()).toBe(true);
+      expect(result.unwrap().trustedOrigins).toEqual(["https://app.example.com"]);
+    });
+
+    it("parses comma-separated origins and trims whitespace", () => {
+      const result = authEnvFrom({
+        BETTER_AUTH_SECRET: VALID_SECRET,
+        BETTER_AUTH_URL: VALID_URL,
+        BETTER_AUTH_TRUSTED_ORIGINS: "https://a.example.com, https://b.example.com ,https://c.example.com",
+      });
+
+      expect(result.isOk()).toBe(true);
+      expect(result.unwrap().trustedOrigins).toEqual([
+        "https://a.example.com",
+        "https://b.example.com",
+        "https://c.example.com",
+      ]);
+    });
+
+    it("returns Err when the value contains only commas/whitespace in production", () => {
+      const result = authEnvFrom({
+        BETTER_AUTH_SECRET: VALID_SECRET,
+        BETTER_AUTH_URL: VALID_URL,
+        BETTER_AUTH_TRUSTED_ORIGINS: " , , ",
+        NODE_ENV: "production",
+      });
+
+      expect(result.isErr()).toBe(true);
+      expect(result.unwrapErr().message).toMatch(/BETTER_AUTH_TRUSTED_ORIGINS/);
+    });
+  });
+
   describe("success path", () => {
     it("returns Ok when both secret (>= 32 chars) and URL are present", () => {
       const result = authEnvFrom({

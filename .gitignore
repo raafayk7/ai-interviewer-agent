@@ -39,3 +39,9 @@ yarn-error.log*
 
 reference-agents-backend/
 reference-skills-backend/
+
+local-storage/
+
+# Playwright artifacts
+apps/web/test-results/
+apps/web/playwright-report/

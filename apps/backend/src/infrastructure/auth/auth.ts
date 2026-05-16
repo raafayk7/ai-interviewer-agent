@@ -7,16 +7,14 @@ export interface AuthConfig {
   readonly secret: string;
   readonly baseUrl: string;
   readonly db: Database;
-  readonly trustedOrigins?: readonly string[];
+  readonly trustedOrigins: readonly string[];
 }
 
 export function createAuth(config: AuthConfig) {
   return betterAuth({
     secret: config.secret,
     baseURL: config.baseUrl,
-    trustedOrigins: config.trustedOrigins
-      ? [...config.trustedOrigins]
-      : ["http://localhost:3000"],
+    trustedOrigins: [...config.trustedOrigins],
     database: drizzleAdapter(config.db, {
       provider: "pg",
       schema: {

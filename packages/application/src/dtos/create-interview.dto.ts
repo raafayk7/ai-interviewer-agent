@@ -8,7 +8,7 @@ const FileRefSchema = z.object({
   contentType: z.string().min(1),
   sizeBytes: z.number().int().nonnegative(),
   originalFilename: z.string().min(1),
-  uploadedAt: z.date(),
+  uploadedAt: z.coerce.date(),
 });
 
 const JobDescriptionSchema = z.object({

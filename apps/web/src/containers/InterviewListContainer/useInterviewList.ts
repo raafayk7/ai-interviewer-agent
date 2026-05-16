@@ -21,11 +21,20 @@ export function useInterviewList() {
     },
   });
 
+  const all = useMemo(
+    () => query.data?.interviews ?? [],
+    [query.data?.interviews],
+  );
+
+  const availableStatuses = useMemo(
+    () => new Set(all.map((i) => i.status)),
+    [all],
+  );
+
   const filtered = useMemo<Interview[]>(() => {
-    const all = query.data?.interviews ?? [];
     if (statusFilter === "ALL") return all;
     return all.filter((i) => i.status === statusFilter);
-  }, [query.data, statusFilter]);
+  }, [all, statusFilter]);
 
   const visible = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
 
@@ -40,5 +49,6 @@ export function useInterviewList() {
     refetch: query.refetch,
     statusFilter,
     setFilter,
+    availableStatuses,
   };
 }

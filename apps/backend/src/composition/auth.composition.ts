@@ -38,13 +38,14 @@ export function buildAuthDeps(options: AuthCompositionOptions = {}): AuthDeps {
       require("../infrastructure/persistence/db.js") as typeof import("../infrastructure/persistence/db.js")
     ).db;
 
-  const { betterAuthSecret, betterAuthUrl } = authEnv.unwrap();
+  const { betterAuthSecret, betterAuthUrl, trustedOrigins } = authEnv.unwrap();
 
   return {
     auth: createAuth({
       secret: betterAuthSecret,
       baseUrl: betterAuthUrl,
       db,
+      trustedOrigins,
     }),
     candidateLink: candidateLink.unwrap(),
   };

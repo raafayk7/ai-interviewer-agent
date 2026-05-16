@@ -9,13 +9,13 @@ import { InterviewListRow } from "@/components/InterviewListRow";
 import { EmptyDashboardState } from "@/components/EmptyDashboardState";
 
 export function InterviewListContainer() {
-  const { isLoading, isError, error, interviews, total, canLoadMore, loadMore, statusFilter, setFilter } =
+  const { isLoading, isError, error, interviews, total, canLoadMore, loadMore, statusFilter, setFilter, availableStatuses } =
     useInterviewList();
 
   if (isLoading) {
     return (
       <div className="flex flex-col gap-3">
-        <StatusFilterChips statusFilter={statusFilter} onChange={setFilter} />
+        <StatusFilterChips statusFilter={statusFilter} onChange={setFilter} availableStatuses={availableStatuses} />
         {Array.from({ length: 5 }).map((_, i) => (
           <Skeleton key={i} className="h-16 w-full rounded-md" />
         ))}
@@ -49,7 +49,7 @@ export function InterviewListContainer() {
 
   return (
     <div className="flex flex-col gap-4">
-      <StatusFilterChips statusFilter={statusFilter} onChange={setFilter} />
+      <StatusFilterChips statusFilter={statusFilter} onChange={setFilter} availableStatuses={availableStatuses} />
       <div className="flex flex-col gap-1">
         <div className="grid grid-cols-[2fr_2fr_140px_130px_110px] gap-4 px-5 py-2 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
           <span>Candidate</span>

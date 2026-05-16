@@ -24,7 +24,7 @@ const AgentInternalScoreSchema = z.object({
 
 export const InterviewSchema = z.object({
   id: z.string().uuid(),
-  recruiterId: z.string().uuid(),
+  recruiterId: z.string(),
   status: InterviewStatusSchema,
   jobDescription: JobDescriptionSchema,
   candidateInfo: CandidateInfoSchema,
