@@ -6,3 +6,7 @@ export * from "./primitives/label/index";
 export * from "./primitives/avatar/index";
 export * from "./primitives/separator/index";
 export * from "./primitives/skeleton/index";
+export * from "./composites/voice-presence/index";
+export * from "./composites/transcript-feed/index";
+export * from "./composites/mic-level-meter/index";
+export * from "./composites/connection-loss-banner/index";

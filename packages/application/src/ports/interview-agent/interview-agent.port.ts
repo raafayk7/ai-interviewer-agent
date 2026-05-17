@@ -14,6 +14,7 @@ export const END_INTERVIEW_REASON = {
   ALL_TOPICS_COVERED: "all_topics_covered",
   CANDIDATE_NOT_A_FIT: "candidate_not_a_fit",
   CANDIDATE_REQUESTED_END: "candidate_requested_end",
+  CANDIDATE_SILENT: "candidate_silent",
   TIME_UP: "time_up",
 } as const;
 

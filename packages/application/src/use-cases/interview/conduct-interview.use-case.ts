@@ -16,12 +16,22 @@ import {
   type ServiceError,
 } from "../../core/service-error.js";
 import type { ConductInterviewOutput } from "../../dtos/conduct-interview.dto.js";
-import type {
-  AgentMessage,
-  AgentToolEvent,
-  EndInterviewReason,
-  IInterviewAgentService,
+import {
+  END_INTERVIEW_REASON,
+  type AgentMessage,
+  type AgentToolEvent,
+  type EndInterviewReason,
+  type IInterviewAgentService,
 } from "../../ports/interview-agent/index.js";
+
+/**
+ * If the candidate is silent (STT returns no audible text) for this many
+ * consecutive turns, the interview ends gracefully with reason
+ * CANDIDATE_SILENT rather than letting the empty-transcript domain
+ * invariant fail the whole session. The agent is expected to re-prompt
+ * across the first few silent turns; this is the hard cap.
+ */
+const MAX_CONSECUTIVE_SILENT_TURNS = 3;
 import type {
   ISpeechToTextService,
   TranscriptChunk,
@@ -135,6 +145,7 @@ export class ConductInterviewUseCase extends UseCase<
     let endReason: EndInterviewReason | null = null;
     let agentEndedThisTurn = false;
     let lastError: ServiceError | null = null;
+    let consecutiveSilentTurns = 0;
 
     while (!input.abortSignal.aborted && !ownAbortController.signal.aborted) {
       if (hardCeilingReminderTurn !== null && turnIndex > hardCeilingReminderTurn) {
@@ -254,9 +265,26 @@ export class ConductInterviewUseCase extends UseCase<
       }
       if (input.abortSignal.aborted) break;
 
+      const candidateText = finalTextResult.unwrap();
+      // Silent turn: skip recording (empty TranscriptEntry would violate
+      // the domain invariant) and don't push to agent history. Letting
+      // the loop continue without a candidate message means the agent's
+      // next turn sees the same history and will naturally re-prompt.
+      // After MAX_CONSECUTIVE_SILENT_TURNS in a row, end gracefully.
+      if (!candidateText.trim()) {
+        consecutiveSilentTurns += 1;
+        if (consecutiveSilentTurns >= MAX_CONSECUTIVE_SILENT_TURNS) {
+          endReason = END_INTERVIEW_REASON.CANDIDATE_SILENT;
+          break;
+        }
+        turnIndex += 1;
+        continue;
+      }
+      consecutiveSilentTurns = 0;
+
       const candidateEntryResult = TranscriptEntry.create({
         speaker: SPEAKER.CANDIDATE,
-        text: finalTextResult.unwrap(),
+        text: candidateText,
         timestamp: clock(),
       });
       if (candidateEntryResult.isErr()) {
@@ -270,7 +298,7 @@ export class ConductInterviewUseCase extends UseCase<
         break;
       }
       interview = appendCandidate.unwrap();
-      history.push({ role: "user", content: finalTextResult.unwrap() });
+      history.push({ role: "user", content: candidateText });
 
       const persistCandidate = await this.persist(interview);
       if (persistCandidate.isErr()) {

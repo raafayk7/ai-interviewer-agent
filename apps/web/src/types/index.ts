@@ -6,3 +6,4 @@ export * from "./interview-plan.types";
 export * from "./interview.types";
 export * from "./candidate-link.types";
 export * from "./report.types";
+export * from "./candidate-interview-view.types";
