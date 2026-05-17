@@ -142,9 +142,11 @@ describe("CardHeader — displayName", () => {
 // ---------------------------------------------------------------------------
 
 describe("CardTitle — rendering", () => {
-  it("renders a <div> element", () => {
-    const { container } = render(<CardTitle />);
-    expect(container.querySelector("div")).toBeInTheDocument();
+  it("renders an <h3> element by default", () => {
+    render(<CardTitle>Interview Results</CardTitle>);
+    expect(
+      screen.getByRole("heading", { name: "Interview Results", level: 3 }),
+    ).toBeInTheDocument();
   });
 
   it("renders children", () => {
@@ -153,40 +155,63 @@ describe("CardTitle — rendering", () => {
   });
 });
 
-describe("CardTitle — token classes", () => {
-  it("applies font-heading class", () => {
-    const { container } = render(<CardTitle />);
-    expect(container.querySelector("div")).toHaveClass("font-heading");
+describe("CardTitle — polymorphic `as` prop", () => {
+  it("renders as <h1> when as='h1'", () => {
+    render(<CardTitle as="h1">Top Level</CardTitle>);
+    expect(
+      screen.getByRole("heading", { name: "Top Level", level: 1 }),
+    ).toBeInTheDocument();
   });
 
-  it("applies font-semibold and text-lg classes", () => {
-    const { container } = render(<CardTitle />);
-    const div = container.querySelector("div");
-    expect(div).toHaveClass("font-semibold");
-    expect(div).toHaveClass("text-lg");
+  it("renders as <h2> when as='h2'", () => {
+    render(<CardTitle as="h2">Section</CardTitle>);
+    expect(
+      screen.getByRole("heading", { name: "Section", level: 2 }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders as <div> (escape hatch) when as='div' and is not a heading", () => {
+    render(<CardTitle as="div">Not a heading</CardTitle>);
+    expect(screen.getByText("Not a heading").tagName).toBe("DIV");
+    expect(screen.queryByRole("heading")).not.toBeInTheDocument();
+  });
+});
+
+describe("CardTitle — token classes", () => {
+  it("applies font-heading class", () => {
+    render(<CardTitle>Title</CardTitle>);
+    expect(screen.getByRole("heading", { name: "Title" })).toHaveClass("font-heading");
+  });
+
+  it("applies text-lg, leading-none, and tracking-tight classes", () => {
+    render(<CardTitle>Title</CardTitle>);
+    const heading = screen.getByRole("heading", { name: "Title" });
+    expect(heading).toHaveClass("text-lg");
+    expect(heading).toHaveClass("leading-none");
+    expect(heading).toHaveClass("tracking-tight");
   });
 });
 
 describe("CardTitle — className merging", () => {
   it("merges custom className with base classes", () => {
-    const { container } = render(<CardTitle className="my-title" />);
-    const div = container.querySelector("div");
-    expect(div).toHaveClass("my-title");
-    expect(div).toHaveClass("font-heading");
+    render(<CardTitle className="my-title">Title</CardTitle>);
+    const heading = screen.getByRole("heading", { name: "Title" });
+    expect(heading).toHaveClass("my-title");
+    expect(heading).toHaveClass("font-heading");
   });
 });
 
 describe("CardTitle — forwardRef", () => {
   it("ref.current is not null", () => {
-    const ref = React.createRef<HTMLDivElement>();
-    render(<CardTitle ref={ref} />);
+    const ref = React.createRef<HTMLHeadingElement>();
+    render(<CardTitle ref={ref}>Title</CardTitle>);
     expect(ref.current).not.toBeNull();
   });
 
-  it("ref.current is an HTMLDivElement", () => {
-    const ref = React.createRef<HTMLDivElement>();
-    render(<CardTitle ref={ref} />);
-    expect(ref.current).toBeInstanceOf(HTMLDivElement);
+  it("ref.current is an HTMLHeadingElement by default", () => {
+    const ref = React.createRef<HTMLHeadingElement>();
+    render(<CardTitle ref={ref}>Title</CardTitle>);
+    expect(ref.current).toBeInstanceOf(HTMLHeadingElement);
   });
 });
 

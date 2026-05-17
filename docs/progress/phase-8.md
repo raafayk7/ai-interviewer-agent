@@ -392,5 +392,36 @@ pnpm --filter web exec playwright test                                        # 
 ### New follow-ups discovered
 
 - **Tier-2 (carried forward):** smoke E2E against a real backend. Needs `apps/web/playwright.config.ts`'s `webServer` array extended with a second entry that boots `apps/backend` against a test database, plus a `.env.e2e` carrying `BETTER_AUTH_SECRET`, `FILE_STORAGE_*`, `CANDIDATE_LINK_SECRET`, and stubbed AI keys. One spec — sign up → land on `/dashboard` empty state — would catch the entire CORS/port/origin bug class (post-merge fixes #4, #5, #7).
-- **Tier-3 (a11y):** `CardTitle` should expose a heading role when used as a page title. Two viable approaches: (a) add an `asChild`/polymorphic prop to `CardTitle` so consumers can render it as `<h1>` on auth pages, or (b) add explicit `<h1>` elements to `/login` and `/signup` above the card. Option (a) is more flexible; option (b) is one-line.
+- **Tier-3 (a11y):** ~~`CardTitle` should expose a heading role when used as a page title.~~ **Resolved 2026-05-17 — see section below.**
 - **Tier-3 (housekeeping):** the two `@repo/application` lint warnings in `evaluate-interview.use-case.test.ts` should be cleaned up — they pre-date this session and have nothing to do with it, but they're blocking `pnpm turbo run lint` from being green at the monorepo level.
+
+---
+
+## 2026-05-17 — Tier-3 a11y follow-up resolved (CardTitle heading role)
+
+Closed before Phase 9 frontend planning starts, since the candidate flow is the most a11y-sensitive surface in the product and shipping new screens against a primitive that disguises page identity from screen readers would be a clear regression.
+
+### Approach
+
+Took option (a) — polymorphic `as` prop on `CardTitle`. Default tag is `<h3>` (card-scope, easy to override upward to `<h1>` or `<h2>` for page-scope use).
+
+Concrete changes:
+
+- `packages/ui/src/primitives/card/card.tsx` — `CardTitle` now accepts `as?: "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "div"`, default `h3`. `forwardRef` and `displayName` preserved; existing classes unchanged. The `"div"` option is the escape hatch for non-semantic title use.
+- `packages/ui/src/primitives/card/card.test.tsx` — `CardTitle` block rewritten: default-`h3` heading-role assertion, `as="h1"` / `as="h2"` / `as="div"` (negative: not matched by `getByRole("heading")`) tests added. Suite grew from 50 to 54 tests in this file; package total `303 → 306`. A pre-existing false-positive (`expect(...).toHaveClass("font-semibold")` against the old `<div>` selector, where the implementation never set that class) was also removed and replaced with assertions on classes the implementation actually has (`text-lg`, `leading-none`, `tracking-tight`).
+- `apps/web/e2e/login.spec.ts:22` — page-identity probe swapped from `page.getByText("Welcome back…")` (targeting `CardDescription`) to `page.getByRole("heading", { name: "Sign in", level: 3 })`. Other queries unchanged — those target form error messages that are correctly `<p>` elements.
+- `apps/web/e2e/signup.spec.ts:22` — same migration, `getByRole("heading", { name: "Create an account", level: 3 })`. (Heading text is "Create an account", not "Create account" — minor naming clarification.)
+
+### Verification
+
+```bash
+pnpm turbo run check-types --filter=web --filter=@repo/ui   # passed
+pnpm turbo run lint --filter=web --filter=@repo/ui          # passed
+pnpm turbo run test --filter=@repo/ui                       # 306/306 (was 303)
+pnpm turbo run test --filter=web                            # 121/121
+pnpm --filter web exec playwright test                      # 16/16 in ~10s
+```
+
+### Why now, not inside Phase 9
+
+A single-primitive change with cascading benefits — keeping it out of the Phase 9 plan means the plan can simply specify `<CardTitle as="h1">` on the candidate landing screen / `<CardTitle as="h2">` on pre-interview-check step cards without ambiguity, and the recruiter auth pages get the a11y fix for free. The two Playwright E2E specs that worked around the gap now use heading-role queries that more accurately reflect what assistive tech actually sees.

@@ -19,7 +19,7 @@ test.describe("Login form", () => {
   test("renders the form fields", async ({ page }) => {
     await page.goto("/login");
     await expect(
-      page.getByText("Welcome back. Enter your credentials to continue."),
+      page.getByRole("heading", { name: "Sign in", level: 3 }),
     ).toBeVisible();
     await expect(page.getByLabel("Email")).toBeVisible();
     await expect(page.getByLabel("Password")).toBeVisible();

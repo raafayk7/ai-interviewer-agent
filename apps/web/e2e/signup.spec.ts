@@ -19,7 +19,7 @@ test.describe("Signup form", () => {
   test("renders the form fields", async ({ page }) => {
     await page.goto("/signup");
     await expect(
-      page.getByText("Enter your email to get started with Sift."),
+      page.getByRole("heading", { name: "Create an account", level: 3 }),
     ).toBeVisible();
     await expect(page.getByLabel("Email")).toBeVisible();
     await expect(page.getByLabel("Password", { exact: true })).toBeVisible();
