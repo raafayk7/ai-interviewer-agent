@@ -24,6 +24,10 @@ import {
   registerInterviewSessionRoutes,
   type RegisterInterviewSessionRouteOptions,
 } from "./presentation/routes/interview-session.ws.js";
+import {
+  registerCandidateInterviewRoutes,
+  type RegisterCandidateInterviewRoutesOptions,
+} from "./presentation/routes/candidate-interviews.routes.js";
 
 export interface AuthDeps {
   readonly auth: AuthPluginOptions["auth"] & BetterAuthHandlerLike;
@@ -38,6 +42,7 @@ export interface BuildAppOptions {
   readonly interviewSession?: RegisterInterviewSessionRouteOptions;
   readonly recruiterInterviews?: RegisterRecruiterInterviewRoutesOptions;
   readonly recruiterDocuments?: RegisterRecruiterDocumentRoutesOptions;
+  readonly candidateInterviews?: RegisterCandidateInterviewRoutesOptions;
 }
 
 export async function buildApp(options: BuildAppOptions = {}) {
@@ -69,7 +74,8 @@ export async function buildApp(options: BuildAppOptions = {}) {
     !options.authDeps &&
     !options.interviewSession &&
     !options.recruiterInterviews &&
-    !options.recruiterDocuments;
+    !options.recruiterDocuments &&
+    !options.candidateInterviews;
 
   const authDeps =
     options.authDeps ??
@@ -115,6 +121,23 @@ export async function buildApp(options: BuildAppOptions = {}) {
     await app.register(registerRecruiterDocumentRoutes, {
       prefix: "",
       ...recruiterDocuments,
+    });
+  }
+
+  const candidateInterviews =
+    options.candidateInterviews ??
+    (composeDefaults && authDeps?.candidateLink
+      ? {
+          deps: (await import("./composition/candidate-interview.composition.js")).buildCandidateInterviewDeps({
+            candidateLink: authDeps.candidateLink,
+          }),
+        }
+      : undefined);
+
+  if (candidateInterviews) {
+    await app.register(registerCandidateInterviewRoutes, {
+      prefix: "",
+      ...candidateInterviews,
     });
   }
 

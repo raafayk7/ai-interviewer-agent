@@ -198,7 +198,7 @@ export class RecruiterInterviewController {
     expiresInSeconds: number;
   } {
     const token = this.deps.candidateLink.issue(interviewId);
-    const url = new URL(`/interviews/${interviewId}/session`, this.deps.publicBaseUrl);
+    const url = new URL(`/c/${interviewId}`, this.deps.publicBaseUrl);
     url.searchParams.set("token", token);
     return { url: url.toString(), token, expiresInSeconds: this.deps.candidateLink.defaultTtlSeconds };
   }

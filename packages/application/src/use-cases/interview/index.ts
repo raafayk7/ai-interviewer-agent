@@ -27,3 +27,9 @@ export {
   type IssueCandidateLinkInput,
   type IssueCandidateLinkOutput,
 } from "./issue-candidate-link.use-case.js";
+export {
+  GetCandidateInterviewViewUseCase,
+  type GetCandidateInterviewViewInput,
+  type GetCandidateInterviewViewOutput,
+  type CandidateInterviewView,
+} from "./get-candidate-interview-view.use-case.js";

@@ -399,6 +399,8 @@ describe("[Integration] RecruiterInterviewController — POST /interviews/:id/pl
     expect(typeof body.candidateLink.url).toBe("string");
     expect(body.candidateLink.url).toContain(INTERVIEW_ID);
     expect(body.candidateLink.url).toContain("token=");
+    expect(body.candidateLink.url).toContain(`/c/${INTERVIEW_ID}`);
+    expect(body.candidateLink.url).not.toContain("/session");
   });
 
   it("returns 401 when request is unauthenticated", async () => {
@@ -590,6 +592,8 @@ describe("[Integration] RecruiterInterviewController — POST /interviews/:id/ca
     expect(typeof body.url).toBe("string");
     expect(body.url).toContain(INTERVIEW_ID);
     expect(body.url).toContain("token=token-abc");
+    expect(body.url).toContain(`/c/${INTERVIEW_ID}`);
+    expect(body.url).not.toContain("/session");
     expect(body.token).toBe("token-abc");
     expect(body.expiresInSeconds).toBe(604800);
   });
