@@ -36,6 +36,22 @@ After completing any milestone, feature, or development phase, use `progress-doc
 
 Pass the milestone title as the argument. The skill automatically uses a per-file detailed format for 10 or fewer changed files, or a layer/component summary for more than 10 files.
 
+## ADR Kit
+
+This project uses adr-kit for Architecture Decision Records. ADRs live in `docs/adr/`, and `docs/adr/README.md` is the project-specific ADR index and convention reference.
+
+Codex/generic ADR assets live in `.agents/`:
+
+- Skill: `.agents/skills/adr/SKILL.md`
+- Coding rules: `.agents/instructions/adr.coding.md`
+- Review checks: `.agents/instructions/adr.review.md`
+
+Codex custom agent:
+
+- ADR generator: `.codex/agents/adr-generator.toml`
+
+Before architecturally significant code changes, follow `.agents/instructions/adr.coding.md`. When reviewing PRs or diffs, follow `.agents/instructions/adr.review.md`. To create an ADR, use the `adr-generator` custom agent or read `.agents/skills/adr/SKILL.md` and write the ADR directly.
+
 ## Frontend Workflow
 
 Before frontend edits, classify the task:
