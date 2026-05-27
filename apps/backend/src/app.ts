@@ -28,6 +28,18 @@ import {
   registerCandidateInterviewRoutes,
   type RegisterCandidateInterviewRoutesOptions,
 } from "./presentation/routes/candidate-interviews.routes.js";
+import {
+  registerCandidateSessionRoutes,
+  type RegisterCandidateSessionRoutesOptions,
+} from "./presentation/routes/candidate-session.routes.js";
+import {
+  registerElevenLabsInitiationWebhookRoutes,
+  type RegisterElevenLabsInitiationWebhookRoutesOptions,
+} from "./presentation/routes/webhooks/elevenlabs-initiation-webhook.routes.js";
+import {
+  registerElevenLabsWebhookRoutes,
+  type RegisterElevenLabsWebhookRoutesOptions,
+} from "./presentation/routes/webhooks/elevenlabs-webhooks.routes.js";
 
 export interface AuthDeps {
   readonly auth: AuthPluginOptions["auth"] & BetterAuthHandlerLike;
@@ -43,6 +55,9 @@ export interface BuildAppOptions {
   readonly recruiterInterviews?: RegisterRecruiterInterviewRoutesOptions;
   readonly recruiterDocuments?: RegisterRecruiterDocumentRoutesOptions;
   readonly candidateInterviews?: RegisterCandidateInterviewRoutesOptions;
+  readonly candidateSession?: RegisterCandidateSessionRoutesOptions;
+  readonly elevenLabsInitiationWebhook?: RegisterElevenLabsInitiationWebhookRoutesOptions;
+  readonly elevenLabsWebhooks?: RegisterElevenLabsWebhookRoutesOptions;
 }
 
 export async function buildApp(options: BuildAppOptions = {}) {
@@ -75,7 +90,10 @@ export async function buildApp(options: BuildAppOptions = {}) {
     !options.interviewSession &&
     !options.recruiterInterviews &&
     !options.recruiterDocuments &&
-    !options.candidateInterviews;
+    !options.candidateInterviews &&
+    !options.candidateSession &&
+    !options.elevenLabsInitiationWebhook &&
+    !options.elevenLabsWebhooks;
 
   const authDeps =
     options.authDeps ??
@@ -138,6 +156,53 @@ export async function buildApp(options: BuildAppOptions = {}) {
     await app.register(registerCandidateInterviewRoutes, {
       prefix: "",
       ...candidateInterviews,
+    });
+  }
+
+  const candidateSession =
+    options.candidateSession ??
+    (composeDefaults && authDeps?.candidateLink
+      ? {
+          deps: await (await import("./composition/candidate-session.composition.js")).buildCandidateSessionDeps({
+            candidateLink: authDeps.candidateLink,
+          }),
+        }
+      : undefined);
+
+  if (candidateSession) {
+    await app.register(registerCandidateSessionRoutes, {
+      prefix: "",
+      ...candidateSession,
+    });
+  }
+
+  const elevenLabsInitiationWebhook =
+    options.elevenLabsInitiationWebhook ??
+    (composeDefaults
+      ? {
+          deps: (await import("./composition/elevenlabs-initiation-webhook.composition.js")).buildElevenLabsInitiationWebhookDeps(),
+        }
+      : undefined);
+
+  if (elevenLabsInitiationWebhook) {
+    await app.register(registerElevenLabsInitiationWebhookRoutes, {
+      prefix: "/webhooks/elevenlabs/initiation",
+      ...elevenLabsInitiationWebhook,
+    });
+  }
+
+  const elevenLabsWebhooks =
+    options.elevenLabsWebhooks ??
+    (composeDefaults
+      ? {
+          deps: (await import("./composition/elevenlabs-webhook.composition.js")).buildElevenLabsWebhookDeps(),
+        }
+      : undefined);
+
+  if (elevenLabsWebhooks) {
+    await app.register(registerElevenLabsWebhookRoutes, {
+      prefix: "/webhooks/elevenlabs",
+      ...elevenLabsWebhooks,
     });
   }
 

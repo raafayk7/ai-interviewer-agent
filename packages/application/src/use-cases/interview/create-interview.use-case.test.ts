@@ -49,6 +49,7 @@ describe("[Integration] CreateInterviewUseCase", () => {
       const repo: IInterviewRepository = {
         save: saveFn,
         findById: vi.fn(),
+        findByElevenLabsSessionId: vi.fn(),
         listByRecruiter: vi.fn(),
         delete: vi.fn(),
       };
@@ -72,6 +73,7 @@ describe("[Integration] CreateInterviewUseCase", () => {
           return Result.Ok(interview);
         }),
         findById: vi.fn(),
+        findByElevenLabsSessionId: vi.fn(),
         listByRecruiter: vi.fn(),
         delete: vi.fn(),
       };
@@ -91,6 +93,7 @@ describe("[Integration] CreateInterviewUseCase", () => {
           return Result.Ok(interview);
         }),
         findById: vi.fn(),
+        findByElevenLabsSessionId: vi.fn(),
         listByRecruiter: vi.fn(),
         delete: vi.fn(),
       };
@@ -108,6 +111,7 @@ describe("[Integration] CreateInterviewUseCase", () => {
       const repo: IInterviewRepository = {
         save: saveFn,
         findById: vi.fn(),
+        findByElevenLabsSessionId: vi.fn(),
         listByRecruiter: vi.fn(),
         delete: vi.fn(),
       };
@@ -128,6 +132,7 @@ describe("[Integration] CreateInterviewUseCase", () => {
       const repo: IInterviewRepository = {
         save: saveFn,
         findById: vi.fn(),
+        findByElevenLabsSessionId: vi.fn(),
         listByRecruiter: vi.fn(),
         delete: vi.fn(),
       };
@@ -149,6 +154,7 @@ describe("[Integration] CreateInterviewUseCase", () => {
       const repo: IInterviewRepository = {
         save: vi.fn().mockResolvedValue(Result.Err(new Error("DB connection lost"))),
         findById: vi.fn(),
+        findByElevenLabsSessionId: vi.fn(),
         listByRecruiter: vi.fn(),
         delete: vi.fn(),
       };
@@ -167,6 +173,7 @@ describe("[Integration] CreateInterviewUseCase", () => {
       const repo: IInterviewRepository = {
         save: vi.fn().mockResolvedValue(Result.Err(new Error("Network failure"))),
         findById: vi.fn(),
+        findByElevenLabsSessionId: vi.fn(),
         listByRecruiter: vi.fn(),
         delete: vi.fn(),
       };
@@ -189,6 +196,7 @@ describe("[Integration] CreateInterviewUseCase", () => {
       const repo: IInterviewRepository = {
         save: vi.fn(),
         findById: vi.fn(),
+        findByElevenLabsSessionId: vi.fn(),
         listByRecruiter: vi.fn(),
         delete: vi.fn(),
       };

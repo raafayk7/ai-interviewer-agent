@@ -58,6 +58,7 @@ const makeInterview = (): Interview => {
 const makeRepo = (overrides: Partial<IInterviewRepository>): IInterviewRepository => ({
   save: vi.fn(),
   findById: vi.fn(),
+  findByElevenLabsSessionId: vi.fn(),
   listByRecruiter: vi.fn(),
   delete: vi.fn(),
   ...overrides,

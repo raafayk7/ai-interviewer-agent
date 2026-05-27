@@ -29,6 +29,9 @@ importers:
       '@deepgram/sdk':
         specifier: ^5.0.0
         version: 5.0.0
+      '@elevenlabs/elevenlabs-js':
+        specifier: ^2.49.1
+        version: 2.49.1
       '@fastify/cors':
         specifier: ^11.2.0
         version: 11.2.0
@@ -669,6 +672,10 @@ packages:
 
   '@drizzle-team/brocli@0.10.2':
     resolution: {integrity: sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w==}
+
+  '@elevenlabs/elevenlabs-js@2.49.1':
+    resolution: {integrity: sha512-ctwKJaF+ZU3auuuVQK/UBYz5Qev1pqDrnV+BktM+vRvtyt9s1vJvHydCODuj9/uObp8BST2+a5/zu1uShd+ryQ==}
+    engines: {node: '>=18.0.0'}
 
   '@emnapi/runtime@1.7.1':
     resolution: {integrity: sha512-PVtJr5CmLwYAU9PZDMITZoR5iAOShYREoR45EyyLrbntV50mdePTgUn4AmOw90Ifcj+x2kRjdzr1HP3RrNiHGA==}
@@ -5237,6 +5244,16 @@ snapshots:
       - utf-8-validate
 
   '@drizzle-team/brocli@0.10.2': {}
+
+  '@elevenlabs/elevenlabs-js@2.49.1':
+    dependencies:
+      command-exists: 1.2.9
+      node-fetch: 2.7.0
+      ws: 8.20.0
+    transitivePeerDependencies:
+      - bufferutil
+      - encoding
+      - utf-8-validate
 
   '@emnapi/runtime@1.7.1':
     dependencies:

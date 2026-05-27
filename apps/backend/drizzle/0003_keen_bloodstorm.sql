@@ -1,0 +1,1 @@
+ALTER TABLE "interviews" ADD COLUMN "eleven_labs_session_id" text;

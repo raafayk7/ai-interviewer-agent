@@ -31,6 +31,7 @@ export const interviews = pgTable("interviews", {
     .$type<ReadonlyArray<AgentInternalScoreProps>>()
     .notNull()
     .default(sql`'[]'::jsonb`),
+  elevenLabsSessionId: text("eleven_labs_session_id"),
   jdFileRef: jsonb("jd_file_ref").$type<FileRefProps>().notNull(),
   cvFileRef: jsonb("cv_file_ref").$type<FileRefProps>().notNull(),
   scheduledAt: timestamp("scheduled_at", { withTimezone: true, mode: "date" }).notNull(),

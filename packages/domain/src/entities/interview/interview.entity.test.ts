@@ -515,8 +515,49 @@ describe("Interview", () => {
       expect(serialized.startedAt).toBeNull();
       expect(serialized.completedAt).toBeNull();
       expect(serialized.reportId).toBeNull();
+      expect(serialized.elevenLabsSessionId).toBeNull();
       expect(serialized.notes).toEqual([]);
       expect(serialized.internalScores).toEqual([]);
+    });
+  });
+
+  describe("bindElevenLabsSession()", () => {
+    it("binds from SCHEDULED and returns a new instance", () => {
+      const scheduledResult = makeInterview().schedule(makeInterviewPlan());
+      expect(scheduledResult.isOk()).toBe(true);
+
+      const result = scheduledResult.unwrap().bindElevenLabsSession("conv-001");
+
+      expect(result.isOk()).toBe(true);
+      const bound = result.unwrap();
+      expect(bound.serialize().elevenLabsSessionId).toBe("conv-001");
+      expect(scheduledResult.unwrap().serialize().elevenLabsSessionId).toBeNull();
+    });
+
+    it("allows idempotent re-bind to the same session id", () => {
+      const scheduledResult = makeInterview().schedule(makeInterviewPlan());
+      expect(scheduledResult.isOk()).toBe(true);
+      const first = scheduledResult.unwrap().bindElevenLabsSession("conv-001");
+      expect(first.isOk()).toBe(true);
+
+      const second = first.unwrap().bindElevenLabsSession("conv-001");
+
+      expect(second.isOk()).toBe(true);
+      expect(second.unwrap()).toBe(first.unwrap());
+    });
+
+    it("binds while IN_PROGRESS", () => {
+      const result = makeInProgressInterview().bindElevenLabsSession("conv-002");
+
+      expect(result.isOk()).toBe(true);
+      expect(result.unwrap().serialize().elevenLabsSessionId).toBe("conv-002");
+    });
+
+    it("rejects from COMPLETED", () => {
+      const result = makeCompletedInterview().bindElevenLabsSession("conv-003");
+
+      expect(result.isErr()).toBe(true);
+      expect(result.unwrapErr()).toBeInstanceOf(InvalidInterviewStateTransitionError);
     });
   });
 
@@ -595,6 +636,7 @@ describe("Interview", () => {
         startedAt: new Date("2025-06-01T09:05:00Z"),
         completedAt: new Date("2025-06-01T09:50:00Z"),
         reportId: "report-uuid-001",
+        elevenLabsSessionId: "conv-001",
         createdAt: now,
         updatedAt: now,
       };
@@ -606,6 +648,7 @@ describe("Interview", () => {
       expect(reserialized.status).toBe(INTERVIEW_STATUS.EVALUATED);
       expect(reserialized.recruiterId).toBe(data.recruiterId);
       expect(reserialized.reportId).toBe("report-uuid-001");
+      expect(reserialized.elevenLabsSessionId).toBe("conv-001");
       expect(reserialized.startedAt).toEqual(data.startedAt);
       expect(reserialized.completedAt).toEqual(data.completedAt);
       expect(reserialized.transcript).toHaveLength(2);

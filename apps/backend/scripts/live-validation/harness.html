@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Phase 9.5 — Live-validation harness</title>
+    <style>
+      body { font: 14px/1.4 system-ui, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 16px; color: #222; }
+      h1 { font-size: 18px; margin-bottom: 4px; }
+      .sub { color: #666; margin-bottom: 24px; }
+      button { padding: 10px 20px; font-size: 14px; cursor: pointer; }
+      button:disabled { opacity: 0.5; cursor: not-allowed; }
+      #log { background: #111; color: #cfc; padding: 12px; border-radius: 4px; height: 360px; overflow: auto; font: 12px/1.4 ui-monospace, monospace; white-space: pre-wrap; }
+      .log-info { color: #cfc; }
+      .log-warn { color: #fc6; }
+      .log-err { color: #f88; }
+      .row { display: flex; gap: 16px; align-items: center; margin-bottom: 16px; }
+      label { font-weight: bold; }
+      input { flex: 1; padding: 6px; font: 12px ui-monospace, monospace; border: 1px solid #ccc; border-radius: 3px; }
+    </style>
+  </head>
+  <body>
+    <h1>Phase 9.5 Live Validation Harness</h1>
+    <p class="sub">Drives the ElevenLabs Conversational AI gate. The four checks (initiation fires, override honored, correlation token surfaces, end_call dispatches to /tools) are observable from the backend logs / Langfuse spans.</p>
+
+    <div class="row"><label style="width:90px">Backend</label><input id="backend" value="http://localhost:3002" /></div>
+    <div class="row"><label style="width:90px">Interview ID</label><input id="interviewId" placeholder="(filled from URL params)" /></div>
+    <div class="row"><label style="width:90px">Candidate token</label><input id="token" type="password" placeholder="(filled from URL params)" /></div>
+
+    <div class="row">
+      <button id="start" disabled>1. Fetch URL + start conversation</button>
+      <button id="end" disabled>2. End conversation</button>
+    </div>
+
+    <div id="log"></div>
+
+    <script type="module">
+      const params = new URLSearchParams(location.search);
+      const $ = (id) => document.getElementById(id);
+      const log = (msg, level = "info") => {
+        const el = document.createElement("div");
+        el.className = `log-${level}`;
+        el.textContent = `[${new Date().toISOString().slice(11, 19)}] ${msg}`;
+        $("log").appendChild(el);
+        $("log").scrollTop = $("log").scrollHeight;
+        console.log(msg);
+      };
+
+      $("backend").value = params.get("backend") || "http://localhost:3002";
+      $("interviewId").value = params.get("id") || "";
+      $("token").value = params.get("token") || "";
+
+      let conversation = null;
+
+      try {
+        // Import the browser-side ElevenLabs SDK via esm.sh CDN (no build step).
+        const { Conversation } = await import("https://esm.sh/@elevenlabs/client@latest");
+        log("Loaded @elevenlabs/client", "info");
+        $("start").disabled = false;
+
+        $("start").onclick = async () => {
+          $("start").disabled = true;
+          const backend = $("backend").value.trim();
+          const interviewId = $("interviewId").value.trim();
+          const token = $("token").value.trim();
+          if (!interviewId || !token) { log("interviewId and token required", "err"); $("start").disabled = false; return; }
+
+          log(`POST ${backend}/interviews/${interviewId}/candidate-session?token=<…>`, "info");
+          let signedUrl, sessionToken;
+          try {
+            const res = await fetch(
+              `${backend}/interviews/${interviewId}/candidate-session?token=${encodeURIComponent(token)}`,
+              { method: "POST", credentials: "omit" },
+            );
+            const body = await res.json();
+            if (!res.ok) { log(`backend ${res.status}: ${JSON.stringify(body)}`, "err"); $("start").disabled = false; return; }
+            signedUrl = body.signedUrl;
+            sessionToken = body.sessionToken;
+            log(`got signedUrl (${signedUrl.slice(0, 50)}…) and sessionToken (${sessionToken.slice(0, 12)}…)`, "info");
+          } catch (e) { log(`backend POST failed: ${e?.message ?? e}`, "err"); $("start").disabled = false; return; }
+
+          log("Requesting microphone…", "info");
+          try {
+            await navigator.mediaDevices.getUserMedia({ audio: true });
+          } catch (e) { log(`mic denied: ${e?.message ?? e}`, "err"); $("start").disabled = false; return; }
+
+          log("Starting Conversation.startSession with dynamicVariables.correlation_token=<sessionToken>…", "info");
+          try {
+            conversation = await Conversation.startSession({
+              signedUrl,
+              dynamicVariables: { correlation_token: sessionToken },
+              onConnect: ({ conversationId }) => log(`onConnect — conversationId=${conversationId}`, "info"),
+              onDisconnect: () => log("onDisconnect", "warn"),
+              onMessage: ({ message, source }) => log(`onMessage [${source}] ${message?.slice?.(0, 120) ?? JSON.stringify(message).slice(0, 120)}`, "info"),
+              onError: (err) => log(`onError ${err?.message ?? err}`, "err"),
+              onModeChange: ({ mode }) => log(`mode -> ${mode}`, "info"),
+            });
+            log("conversation started", "info");
+            $("end").disabled = false;
+          } catch (e) { log(`startSession failed: ${e?.message ?? e}`, "err"); $("start").disabled = false; }
+        };
+
+        $("end").onclick = async () => {
+          $("end").disabled = true;
+          try { await conversation?.endSession(); log("endSession called", "info"); } catch (e) { log(`endSession failed: ${e?.message ?? e}`, "err"); }
+        };
+      } catch (e) {
+        log(`failed to load SDK: ${e?.message ?? e}`, "err");
+      }
+    </script>
+  </body>
+</html>

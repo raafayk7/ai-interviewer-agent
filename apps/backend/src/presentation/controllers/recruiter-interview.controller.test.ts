@@ -185,7 +185,7 @@ describe("[Integration] RecruiterInterviewController — POST /interviews", () =
   let parseSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    parseSpy = vi.spyOn(ApplicationModule.CreateInterviewInputDto as any, "parse").mockImplementation(
+    parseSpy = vi.spyOn(ApplicationModule.CreateInterviewInputDto, "parse").mockImplementation(
       (raw: unknown) => {
         if (!raw || typeof raw !== "object" || !("jobDescription" in raw)) {
           return Result.Err(
@@ -193,7 +193,7 @@ describe("[Integration] RecruiterInterviewController — POST /interviews", () =
           );
         }
         // Return Ok with a minimal valid DTO value
-        return Result.Ok({ value: raw } as any);
+        return Result.Ok({ value: raw } as ApplicationModule.CreateInterviewInputDto);
       },
     );
   });

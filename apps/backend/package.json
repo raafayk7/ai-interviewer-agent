@@ -20,6 +20,7 @@
     "@ai-sdk/google": "^3.0.61",
     "@carbonteq/fp": "^0.9.1",
     "@deepgram/sdk": "^5.0.0",
+    "@elevenlabs/elevenlabs-js": "^2.49.1",
     "@fastify/cors": "^11.2.0",
     "@fastify/multipart": "^10.0.0",
     "@fastify/websocket": "^11.0.0",

@@ -13,6 +13,7 @@ import {
   type InterviewInsertRow,
   type InterviewRow,
 } from "../persistence/schema/interviews.js";
+import type { RepositoryError } from "./errors/repository-error.js";
 import { translatePgError } from "./errors/translate-pg-error.js";
 
 type TranscriptEntrySerialized = InterviewSerialized["transcript"][number];
@@ -55,6 +56,7 @@ const rowToSerialized = (row: InterviewRow): InterviewSerialized => ({
   transcript: row.transcript.map(reviveTranscriptEntry),
   notes: row.notes.map(reviveAgentNote),
   internalScores: row.internalScores.map(reviveAgentInternalScore),
+  elevenLabsSessionId: row.elevenLabsSessionId,
   jdFileRef: reviveFileRef(row.jdFileRef),
   cvFileRef: reviveFileRef(row.cvFileRef),
   scheduledAt: row.scheduledAt,
@@ -76,6 +78,7 @@ const serializedToInsertRow = (serialized: InterviewSerialized): InterviewInsert
   transcript: serialized.transcript,
   notes: serialized.notes,
   internalScores: serialized.internalScores,
+  elevenLabsSessionId: serialized.elevenLabsSessionId,
   jdFileRef: serialized.jdFileRef,
   cvFileRef: serialized.cvFileRef,
   scheduledAt: serialized.scheduledAt,
@@ -110,6 +113,7 @@ export class DrizzleInterviewRepository implements IInterviewRepository {
               transcript: insertRow.transcript,
               notes: insertRow.notes,
               internalScores: insertRow.internalScores,
+              elevenLabsSessionId: insertRow.elevenLabsSessionId,
               jdFileRef: insertRow.jdFileRef,
               cvFileRef: insertRow.cvFileRef,
               scheduledAt: insertRow.scheduledAt,
@@ -145,6 +149,26 @@ export class DrizzleInterviewRepository implements IInterviewRepository {
       translatePgError("InterviewRepository.listByRecruiter"),
     )
       .map((rows) => rows.map((row) => Interview.fromSerialized(rowToSerialized(row))))
+      .toPromise();
+  }
+
+  async findByElevenLabsSessionId(
+    elevenLabsSessionId: string,
+  ): Promise<Result<Option<Interview>, RepositoryError>> {
+    return Result.tryAsyncCatch(
+      () =>
+        this.db
+          .select()
+          .from(interviews)
+          .where(eq(interviews.elevenLabsSessionId, elevenLabsSessionId))
+          .limit(1),
+      translatePgError("InterviewRepository.findByElevenLabsSessionId"),
+    )
+      .map((rows) =>
+        rows.length === 0
+          ? Option.None
+          : Option.Some(Interview.fromSerialized(rowToSerialized(rows[0]!))),
+      )
       .toPromise();
   }
 

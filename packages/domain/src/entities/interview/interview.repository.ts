@@ -7,6 +7,8 @@ export interface IInterviewRepository {
 
   findById(id: InterviewId): Promise<Result<Option<Interview>, Error>>;
 
+  findByElevenLabsSessionId(sessionId: string): Promise<Result<Option<Interview>, Error>>;
+
   listByRecruiter(recruiterId: RecruiterId): Promise<Result<ReadonlyArray<Interview>, Error>>;
 
   delete(id: InterviewId): Promise<Result<void, Error>>;

@@ -57,6 +57,7 @@ export interface InterviewSerialized {
   readonly startedAt: Date | null;
   readonly completedAt: Date | null;
   readonly reportId: ReportId | null;
+  readonly elevenLabsSessionId: string | null;
   readonly createdAt: Date;
   readonly updatedAt: Date;
 }
@@ -83,6 +84,7 @@ export class Interview extends BaseEntity {
     readonly startedAt: Option<Date>,
     readonly completedAt: Option<Date>,
     readonly reportId: Option<ReportId>,
+    readonly elevenLabsSessionId: Option<string>,
     createdAt: Date,
     updatedAt: Date,
   ) {
@@ -109,6 +111,7 @@ export class Interview extends BaseEntity {
       props.jdFileRef,
       props.cvFileRef,
       props.scheduledAt,
+      Option.None,
       Option.None,
       Option.None,
       Option.None,
@@ -172,6 +175,27 @@ export class Interview extends BaseEntity {
     return Result.Ok(this.withChanges({ internalScores: Object.freeze([...this.internalScores, score]) }));
   }
 
+  bindElevenLabsSession(sessionId: string): Result<Interview, InvalidInterviewStateTransitionError> {
+    if (
+      this.status !== INTERVIEW_STATUS.SCHEDULED &&
+      this.status !== INTERVIEW_STATUS.IN_PROGRESS
+    ) {
+      return Result.Err(
+        new InvalidInterviewStateTransitionError(this.status, INTERVIEW_STATUS.IN_PROGRESS),
+      );
+    }
+
+    const alreadyBound = this.elevenLabsSessionId.match({
+      Some: (current) => current === sessionId,
+      None: () => false,
+    });
+    if (alreadyBound) {
+      return Result.Ok(this);
+    }
+
+    return Result.Ok(this.withChanges({ elevenLabsSessionId: Option.Some(sessionId) }));
+  }
+
   /** COMPLETED → EVALUATED — links report. */
   markEvaluated(reportId: ReportId): Result<Interview, InvalidInterviewStateTransitionError> {
     if (!InterviewStatusPolicy.canTransition(this.status, INTERVIEW_STATUS.EVALUATED)) {
@@ -211,6 +235,10 @@ export class Interview extends BaseEntity {
       startedAt: this.startedAt.match({ Some: (d) => d, None: () => null }),
       completedAt: this.completedAt.match({ Some: (d) => d, None: () => null }),
       reportId: this.reportId.match({ Some: (id) => id, None: () => null }),
+      elevenLabsSessionId: this.elevenLabsSessionId.match({
+        Some: (id) => id,
+        None: () => null,
+      }),
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };
@@ -234,6 +262,7 @@ export class Interview extends BaseEntity {
       data.startedAt === null ? Option.None : Option.Some(data.startedAt),
       data.completedAt === null ? Option.None : Option.Some(data.completedAt),
       data.reportId === null ? Option.None : Option.Some(data.reportId),
+      data.elevenLabsSessionId === null ? Option.None : Option.Some(data.elevenLabsSessionId),
       data.createdAt,
       data.updatedAt,
     );
@@ -250,6 +279,7 @@ export class Interview extends BaseEntity {
     startedAt: Option<Date>;
     completedAt: Option<Date>;
     reportId: Option<ReportId>;
+    elevenLabsSessionId: Option<string>;
   }>): Interview {
     return new Interview(
       this.id,
@@ -268,6 +298,7 @@ export class Interview extends BaseEntity {
       patch.startedAt ?? this.startedAt,
       patch.completedAt ?? this.completedAt,
       patch.reportId ?? this.reportId,
+      patch.elevenLabsSessionId ?? this.elevenLabsSessionId,
       this.createdAt,
       new Date(),
     );
