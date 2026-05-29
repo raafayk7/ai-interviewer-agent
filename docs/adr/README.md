@@ -17,9 +17,9 @@ An ADR captures the context and reasoning behind a design choice that constrains
 | Category | Count |
 |---|---|
 | [Architecture & Cross-Cutting](#architecture--cross-cutting) | 1 |
-| [AI & Voice Pipeline](#ai--voice-pipeline) | 6 |
+| [AI & Voice Pipeline](#ai--voice-pipeline) | 9 |
 | [Data & Storage](#data--storage) | 2 |
-| [Observability](#observability) | 5 |
+| [Observability](#observability) | 6 |
 | [Domain & Application Design](#domain--application-design) | 4 |
 | [Authentication & Security](#authentication--security) | 3 |
 | [Presentation](#presentation) | 1 |
@@ -39,12 +39,17 @@ An ADR captures the context and reasoning behind a design choice that constrains
 
 | # | Title | Status | Date |
 |---|---|---|---|
-| [ADR-002](ADR-002-use-sandwich-architecture-for-voice-interviews.md) | Use Sandwich Architecture for Voice Interviews | Accepted | 2026-05-09 |
+| [ADR-002](ADR-002-use-sandwich-architecture-for-voice-interviews.md) | Use Sandwich Architecture for Voice Interviews (superseded as primary by ADR-029; retained as fallback) | Superseded by ADR-029 | 2026-05-09 |
 | [ADR-003](ADR-003-use-gemini-multimodal-for-document-ingestion.md) | Use Gemini Multimodal for Document Ingestion | Accepted | 2026-05-09 |
 | [ADR-006](ADR-006-interview-duration-soft-target-with-hard-ceiling.md) | Interview Duration Is a Soft Target with a Hard Ceiling Enforced by the System | Accepted | 2026-05-09 |
 | [ADR-010](ADR-010-use-async-iterable-stream-contracts-for-stt-tts-ports.md) | Use AsyncIterable Stream Contracts for STT and TTS Application Ports | Accepted | 2026-05-10 |
 | [ADR-011](ADR-011-adopt-fastify-websocket-v11-for-websocket-transport.md) | Adopt @fastify/websocket v11 for WebSocket Transport in the Voice Pipeline | Accepted | 2026-05-10 |
 | [ADR-013](ADR-013-conduct-interview-orchestration-and-tool-effects.md) | Conduct Interview Orchestration: Tool Effects Persisted on the Aggregate, Per-Turn Persistence, and Agent Tool Surface | Accepted | 2026-05-15 |
+| [ADR-029](ADR-029-adopt-elevenlabs-conversational-ai-for-voice-interviews.md) | Adopt ElevenLabs Conversational AI as the Primary Voice Interview Pipeline (supersedes ADR-002; sandwich retained as fallback) | Accepted | 2026-05-29 |
+| [ADR-030](ADR-030-static-elevenlabs-agent-with-per-session-overrides.md) | Static ElevenLabs Agent with Per-Session Overrides via Conversation-Initiation Webhook | Superseded by ADR-033 | 2026-05-27 |
+| [ADR-031](ADR-031-elevenlabs-webhooks-drive-interview-lifecycle.md) | ElevenLabs Webhooks Drive the Interview Lifecycle | Superseded by ADR-034 | 2026-05-27 |
+| [ADR-033](ADR-033-elevenlabs-static-agent-server-built-overrides-via-browser-sdk.md) | ElevenLabs Static Agent: Server-Built Overrides Delivered Inline via Browser SDK (supersedes ADR-030; owns SCHEDULED to IN_PROGRESS transition at issuance) | Accepted | 2026-05-29 |
+| [ADR-034](ADR-034-elevenlabs-lifecycle-two-webhooks-per-tool-urls-scoped-hmac.md) | ElevenLabs Lifecycle: Two Inbound Webhook Surfaces with Scoped HMAC, Per-Tool URLs, and Post-Call End-Reason Recovery (supersedes ADR-031) | Accepted | 2026-05-29 |
 
 ### Data & Storage
 
@@ -62,6 +67,7 @@ An ADR captures the context and reasoning behind a design choice that constrains
 | [ADR-014](ADR-014-extend-otel-span-hierarchy-with-agent-turn-and-rename-session-span.md) | Extend OTel Span Hierarchy with `interview.turn.agent` and Unify Session Span as `interview.session.agent` | Accepted | 2026-05-15 |
 | [ADR-015](ADR-015-phase-6-evaluation-span-schema-explicit-invocation-and-hardcoded-rubric.md) | Phase 6 Evaluation: Span Schema, Explicit Invocation Policy, and Hardcoded Rubric | Accepted | 2026-05-15 |
 | [ADR-020](ADR-020-host-llm-prompts-in-langfuse-with-code-resident-fallbacks.md) | Host LLM Prompts in Langfuse with Code-Resident Fallbacks | Accepted | 2026-05-13 |
+| [ADR-032](ADR-032-otel-span-hierarchy-for-elevenlabs-conversational-sessions.md) | Extend OTel Span Hierarchy for ElevenLabs Conversational Sessions (extends ADR-012/014; no session-start-webhook span; D1 records SCHEDULED to IN_PROGRESS transition at issuance) | Accepted | 2026-05-29 |
 
 ### Domain & Application Design
 

@@ -12,6 +12,9 @@ node_modules
 .env.test.local
 .env.production.local
 
+# Live-validation runtime artifacts (hold the webhook HMAC secret + candidate tokens)
+apps/backend/scripts/live-validation/.artifacts.json
+
 # Testing
 coverage
 

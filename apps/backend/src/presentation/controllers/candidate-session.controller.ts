@@ -24,7 +24,12 @@ export interface StartCandidateSessionInput {
 
 export interface StartCandidateSessionOutput {
   readonly signedUrl: string;
-  readonly sessionToken: string;
+  readonly overrides: {
+    readonly agent: {
+      readonly prompt: { readonly prompt: string };
+    };
+  };
+  readonly dynamicVariables: Readonly<Record<string, string>>;
 }
 
 export interface CandidateSessionControllerDeps {
@@ -95,6 +100,7 @@ export class CandidateSessionController {
       }
 
       span.setAttribute("elevenLabs.agentId", this.deps.agentId);
+      span.setAttribute("interview.session.override_assembled", true);
       await reply.code(200).send(result.unwrap());
     } finally {
       span.end();

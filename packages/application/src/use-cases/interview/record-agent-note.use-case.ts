@@ -6,7 +6,7 @@ import {
 } from "@repo/domain";
 import { ServiceUnknownError, type ServiceError } from "../../core/service-error.js";
 import { UseCase } from "../../core/use-case.js";
-import type { WebhookReceiverOutput } from "./start-interview-from-webhook.use-case.js";
+import type { WebhookReceiverOutput } from "./record-internal-score.use-case.js";
 
 export interface RecordAgentNoteInput {
   readonly interviewId: string;

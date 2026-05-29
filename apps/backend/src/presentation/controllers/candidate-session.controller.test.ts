@@ -11,6 +11,7 @@ import {
   type CandidateLinkVerifier,
   type CandidateSessionControllerDeps,
 } from "./candidate-session.controller.js";
+import { mapServiceErrorToHttp } from "../errors/http-error-mapper.js";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -42,7 +43,8 @@ const makeDeps = (
     execute: vi.fn().mockResolvedValue(
       Result.Ok({
         signedUrl: "https://signed.example/session",
-        sessionToken: "session-token",
+        overrides: { agent: { prompt: { prompt: "You are an interviewer..." } } },
+        dynamicVariables: { candidate_name: "Jane", job_title: "Engineer", target_duration_minutes: "15", interview_id: "interview-001" },
       }),
     ),
   },
@@ -53,7 +55,7 @@ const makeDeps = (
 
 describe("[E2E] CandidateSessionController", () => {
   describe("start() — success path", () => {
-    it("returns 200 with signedUrl and sessionToken on valid request", async () => {
+    it("returns 200 with signedUrl, overrides, and dynamicVariables on valid request", async () => {
       const deps = makeDeps();
       const controller = new CandidateSessionController(deps);
       const reply = new FakeReply();
@@ -67,10 +69,10 @@ describe("[E2E] CandidateSessionController", () => {
       );
 
       expect(reply.statusCode).toBe(200);
-      expect(reply.body).toEqual({
-        signedUrl: "https://signed.example/session",
-        sessionToken: "session-token",
-      });
+      const body = reply.body as Record<string, unknown>;
+      expect(body.signedUrl).toBe("https://signed.example/session");
+      expect(body.overrides).toBeDefined();
+      expect(body.dynamicVariables).toBeDefined();
     });
 
     it("invokes use case with correct interviewId and agentId", async () => {
@@ -141,6 +143,8 @@ describe("[E2E] CandidateSessionController", () => {
       );
 
       expect(reply.statusCode).toBe(401);
+      // the ServiceError is emitted through the shared error mapper (ADR-018)
+      expect(reply.body).toEqual(mapServiceErrorToHttp(invalidToken).body);
       expect(execute).not.toHaveBeenCalled();
     });
 
@@ -312,7 +316,8 @@ describe("OTel spans (ADR-032) — D1 interview.session.conversational", () => {
         execute: vi.fn().mockResolvedValue(
           Result.Ok({
             signedUrl: "https://signed.example/session",
-            sessionToken: "session-token",
+            overrides: { agent: { prompt: { prompt: "You are an interviewer..." } } },
+            dynamicVariables: { candidate_name: "Jane", job_title: "Engineer", target_duration_minutes: "15", interview_id: "interview-001" },
           }),
         ),
       },
@@ -327,7 +332,8 @@ describe("OTel spans (ADR-032) — D1 interview.session.conversational", () => {
         execute: vi.fn().mockResolvedValue(
           Result.Ok({
             signedUrl: "https://signed.example/session",
-            sessionToken: "session-token",
+            overrides: { agent: { prompt: { prompt: "You are an interviewer..." } } },
+            dynamicVariables: { candidate_name: "Jane", job_title: "Engineer", target_duration_minutes: "15", interview_id: "interview-001" },
           }),
         ),
       },

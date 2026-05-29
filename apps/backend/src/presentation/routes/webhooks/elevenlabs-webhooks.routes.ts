@@ -23,11 +23,14 @@ export const registerElevenLabsWebhookRoutes: FastifyPluginAsync<
     captureJsonRawBody,
   );
 
-  app.post<{ Body: unknown }>("/session-start", (req, reply) =>
-    controller.handleSessionStart(req as RawBodyFastifyRequest, reply),
+  app.post<{ Body: unknown }>("/tools/next_question", (req, reply) =>
+    controller.handleNextQuestion(req as RawBodyFastifyRequest, reply),
   );
-  app.post<{ Body: unknown }>("/tools", (req, reply) =>
-    controller.handleTool(req as RawBodyFastifyRequest, reply),
+  app.post<{ Body: unknown }>("/tools/score_answer", (req, reply) =>
+    controller.handleScoreAnswer(req as RawBodyFastifyRequest, reply),
+  );
+  app.post<{ Body: unknown }>("/tools/take_note", (req, reply) =>
+    controller.handleTakeNote(req as RawBodyFastifyRequest, reply),
   );
   app.post<{ Body: unknown }>("/post-call", (req, reply) =>
     controller.handlePostCall(req as RawBodyFastifyRequest, reply),

@@ -1,8 +1,5 @@
 import { createRequire } from "node:module";
 import { StartCandidateSessionUseCase } from "@repo/application";
-import {
-  conversationCorrelationTokenFromEnv,
-} from "../infrastructure/auth/conversation-correlation-token.js";
 import type { Database } from "../infrastructure/persistence/db.js";
 import { DrizzleInterviewRepository } from "../infrastructure/repositories/drizzle-interview.repository.js";
 import {
@@ -37,11 +34,6 @@ export async function buildCandidateSessionDeps(
   }
 
   const handle = handleResult.unwrap();
-  const tokenIssuerResult = conversationCorrelationTokenFromEnv(env);
-  if (tokenIssuerResult.isErr()) {
-    throw new Error(`Boot failed: ${tokenIssuerResult.unwrapErr().message}`);
-  }
-
   const assertion = await assertElevenLabsAgentConfig(handle);
   if (assertion.isErr()) {
     throw assertion.unwrapErr();
@@ -55,7 +47,6 @@ export async function buildCandidateSessionDeps(
     startCandidateSessionUseCase: new StartCandidateSessionUseCase(
       new DrizzleInterviewRepository(db),
       new ElevenLabsConversationalService(handle),
-      tokenIssuerResult.unwrap(),
     ),
     candidateLink: options.candidateLink,
     agentId: handle.agentId,

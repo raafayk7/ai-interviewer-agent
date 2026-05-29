@@ -183,3 +183,19 @@ A *"Twilio-only"* answer confirms the supersession path below. A *"browser is su
 ### New environment variable
 
 - `ELEVENLABS_TOOL_WEBHOOK_SECRET` — shared secret carried in each custom tool's `requestHeaders` as `x-voice-secret`. Replaces `ELEVENLABS_SESSION_TOKEN_SECRET` from the deleted correlation-token mechanism.
+
+---
+
+## Addendum — 2026-05-29 live re-run: PASS
+
+The 2026-05-27 findings were implemented and then validated against the live ElevenLabs platform (the deferred live re-run). Outcome: **PASS** — supersedes the 2026-05-25 gate (1 PASS / 3 FAIL). A full browser voice conversation confirmed override delivery, per-tool `x-voice-secret` auth, `interview_id` correlation, post-call HMAC verification, transcript persistence, and the SCHEDULED→IN_PROGRESS→COMPLETED lifecycle.
+
+Three issues surfaced during implementation/live testing beyond the four 2026-05-27 priorities, now fixed:
+
+1. **No browser session-start webhook exists.** Priority 1 correctly killed the synchronous initiation webhook, but the residual assumption that a fire-and-forget `session.started` webhook fires for browser sessions was also wrong — ElevenLabs sends none. The SCHEDULED→IN_PROGRESS transition moved into `StartCandidateSession` at signed-URL issuance. (ADR-034 amended; `/session-start` route + `StartInterviewFromWebhookUseCase` deleted.)
+2. **Tool correlation requires `dynamicVariable` injection.** The §"Open clarification" question on per-tool body correlation is resolved: `interview_id` must be declared in each tool's `request_body_schema` as `{ type: "string", dynamicVariable: "interview_id" }` (SDK `LiteralJsonSchemaProperty`) so ElevenLabs injects the session variable into the body. Confirmed accepted by the API and present in the live `take_note` payload.
+3. **`requestHeaders` is an object map, not an array.** The per-tool `x-voice-secret` header must be `{ "x-voice-secret": … }`, not `[{ name, value }]` (live 422 → fixed in both provisioning scripts).
+
+Also confirmed: `getSignedUrl({ includeConversationId: true })` returns `{ signedUrl }` only (no typed `conversation_id`); the id surfaces via the signed-URL query param / untyped passthrough and is extracted defensively — validated live (a real `conv_…` bound at issuance).
+
+Re-setup runbook: `docs/runbooks/elevenlabs-live-validation.md`.

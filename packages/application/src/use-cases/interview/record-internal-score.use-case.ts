@@ -6,7 +6,11 @@ import {
 } from "@repo/domain";
 import { ServiceUnknownError, type ServiceError } from "../../core/service-error.js";
 import { UseCase } from "../../core/use-case.js";
-import type { WebhookReceiverOutput } from "./start-interview-from-webhook.use-case.js";
+
+/** Output for webhook-receiver use cases — `applied` reports whether the change took effect. */
+export interface WebhookReceiverOutput {
+  readonly applied: boolean;
+}
 
 export interface RecordInternalScoreInput {
   readonly interviewId: string;

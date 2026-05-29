@@ -1,7 +1,7 @@
 import { Option, Result } from "@carbonteq/fp";
 import { context as otelContext, trace, type Span } from "@opentelemetry/api";
 import type { FastifyReply, FastifyRequest } from "fastify";
-import type { ServiceError } from "@repo/application";
+import type { PostCallTranscriptEntry, PostCallToolResult, ServiceError } from "@repo/application";
 import { mapServiceErrorToHttp } from "../errors/http-error-mapper.js";
 
 const tracer = trace.getTracer("ai-interviewer.webhook");
@@ -12,6 +12,10 @@ export interface RawBodyFastifyRequest extends FastifyRequest {
 
 export interface WebhookVerifierLike {
   verify(rawBody: string, signature: string | undefined): Result<void, unknown>;
+}
+
+export interface ToolSecretVerifierLike {
+  verify(headerValue: string | undefined): Result<void, unknown>;
 }
 
 export interface WebhookUseCaseLike<I, O = WebhookReceiverOutput> {
@@ -38,12 +42,8 @@ export interface InterviewIdLike {
 }
 
 export interface ElevenLabsWebhookControllerDeps {
-  readonly verifier: WebhookVerifierLike;
-  readonly startInterviewFromWebhookUseCase: WebhookUseCaseLike<{
-    readonly interviewId: string;
-    readonly elevenLabsSessionId: string;
-    readonly occurredAt: Date;
-  }>;
+  readonly hmacVerifier: WebhookVerifierLike;
+  readonly toolSecretVerifier: ToolSecretVerifierLike;
   readonly recordAgentNoteUseCase: WebhookUseCaseLike<{
     readonly interviewId: string;
     readonly note: string;
@@ -58,63 +58,82 @@ export interface ElevenLabsWebhookControllerDeps {
     readonly recordedAtTurn?: number;
     readonly recordedAt: Date;
   }>;
-  readonly endInterviewFromAgentUseCase: WebhookUseCaseLike<{
-    readonly interviewId: string;
-    readonly reason: string;
-    readonly recordedAtTurn?: number;
-    readonly recordedAt: Date;
-  }>;
   readonly persistCompletedTranscriptUseCase: WebhookUseCaseLike<
     {
       readonly interviewId: string;
       readonly elevenLabsSessionId: string;
       readonly occurredAt: Date;
+      readonly transcript: ReadonlyArray<PostCallTranscriptEntry>;
     },
     TranscriptPersistOutput
   >;
   readonly interviewResolver: InterviewIdResolverLike;
 }
 
-interface ParsedSessionStartPayload {
-  readonly interviewId: string;
+interface ParsedPostCallPayload {
   readonly elevenLabsSessionId: string;
+  readonly occurredAt: Date;
+  readonly terminationReason: string | null;
+  readonly transcript: ReadonlyArray<PostCallTranscriptEntry>;
+}
+
+interface ParsedTakeNotePayload {
+  readonly interviewId: string;
+  readonly elevenLabsSessionId?: string;
+  readonly note: string;
+  readonly recordedAtTurn?: number;
   readonly occurredAt: Date;
 }
 
-interface ParsedToolPayload extends ParsedSessionStartPayload {
-  readonly toolName: string;
-  readonly args: Readonly<Record<string, unknown>>;
-}
-
-interface ParsedPostCallPayload {
-  readonly elevenLabsSessionId: string;
+interface ParsedScoreAnswerPayload {
+  readonly interviewId: string;
+  readonly elevenLabsSessionId?: string;
+  readonly topicName: string;
+  readonly score: number;
+  readonly justification: string;
+  readonly recordedAtTurn?: number;
   readonly occurredAt: Date;
 }
 
 export class ElevenLabsWebhookController {
   constructor(private readonly deps: ElevenLabsWebhookControllerDeps) {}
 
-  async handleSessionStart(
-    req: FastifyRequest,
-    reply: FastifyReply,
-  ): Promise<void> {
-    const span = tracer.startSpan("interview.webhook.session-start");
+  async handleNextQuestion(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const span = tracer.startSpan("interview.webhook.tool");
     try {
-      if (!(await this.verifyWebhook(req, reply, span))) return;
+      span.setAttribute("webhook.tool_name", "next_question");
+      if (!(await this.verifyToolSecret(req, reply, span))) return;
+      span.setAttribute("webhook.result", "ok");
+      await reply.send({ ok: true });
+    } finally {
+      span.end();
+    }
+  }
 
-      const payload = parseSessionStartPayload(req.body);
+  async handleScoreAnswer(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const span = tracer.startSpan("interview.webhook.tool");
+    try {
+      span.setAttribute("webhook.tool_name", "score_answer");
+      if (!(await this.verifyToolSecret(req, reply, span))) return;
+
+      const payload = parseScoreAnswerPayload(req.body);
       if (!payload) {
         await sendParseError(reply, span);
         return;
       }
 
       span.setAttribute("interview.id", payload.interviewId);
-      span.setAttribute("elevenLabs.sessionId", payload.elevenLabsSessionId);
+      if (payload.elevenLabsSessionId) {
+        span.setAttribute("elevenLabs.sessionId", payload.elevenLabsSessionId);
+      }
 
-      const result = await this.deps.startInterviewFromWebhookUseCase.execute({
+      const result = await this.deps.recordInternalScoreUseCase.execute({
         interviewId: payload.interviewId,
-        elevenLabsSessionId: payload.elevenLabsSessionId,
-        occurredAt: payload.occurredAt,
+        topicName: payload.topicName,
+        score: payload.score,
+        justification: payload.justification,
+        recordedAtTurn: payload.recordedAtTurn,
+        recordedAt: payload.occurredAt,
       });
       await sendWebhookResult(reply, result, span);
     } finally {
@@ -122,28 +141,29 @@ export class ElevenLabsWebhookController {
     }
   }
 
-  async handleTool(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+  async handleTakeNote(req: FastifyRequest, reply: FastifyReply): Promise<void> {
     const span = tracer.startSpan("interview.webhook.tool");
     try {
-      if (!(await this.verifyWebhook(req, reply, span))) return;
+      span.setAttribute("webhook.tool_name", "take_note");
+      if (!(await this.verifyToolSecret(req, reply, span))) return;
 
-      const payload = parseToolPayload(req.body);
+      const payload = parseTakeNotePayload(req.body);
       if (!payload) {
         await sendParseError(reply, span);
         return;
       }
 
       span.setAttribute("interview.id", payload.interviewId);
-      span.setAttribute("elevenLabs.sessionId", payload.elevenLabsSessionId);
-      span.setAttribute("webhook.tool_name", payload.toolName);
-
-      if (payload.toolName === "next_question") {
-        span.setAttribute("webhook.result", "ok");
-        await reply.code(200).send({ ok: true });
-        return;
+      if (payload.elevenLabsSessionId) {
+        span.setAttribute("elevenLabs.sessionId", payload.elevenLabsSessionId);
       }
 
-      const result = await this.dispatchTool(payload);
+      const result = await this.deps.recordAgentNoteUseCase.execute({
+        interviewId: payload.interviewId,
+        note: payload.note,
+        recordedAtTurn: payload.recordedAtTurn,
+        recordedAt: payload.occurredAt,
+      });
       await sendWebhookResult(reply, result, span);
     } finally {
       span.end();
@@ -153,7 +173,7 @@ export class ElevenLabsWebhookController {
   async handlePostCall(req: FastifyRequest, reply: FastifyReply): Promise<void> {
     const span = tracer.startSpan("interview.webhook.session-end");
     try {
-      if (!(await this.verifyWebhook(req, reply, span))) return;
+      if (!(await this.verifyHmac(req, reply, span))) return;
 
       const payload = parsePostCallPayload(req.body);
       if (!payload) {
@@ -162,6 +182,9 @@ export class ElevenLabsWebhookController {
       }
 
       span.setAttribute("elevenLabs.sessionId", payload.elevenLabsSessionId);
+      if (payload.terminationReason) {
+        span.setAttribute("elevenlabs.termination_reason", payload.terminationReason);
+      }
 
       const interviewResult =
         await this.deps.interviewResolver.findByElevenLabsSessionId(
@@ -177,7 +200,7 @@ export class ElevenLabsWebhookController {
         span.setAttribute("webhook.result", "use_case_error");
         span.setAttribute("error", true);
         span.setAttribute("error.kind", "INTERVIEW_NOT_FOUND");
-        await reply.code(200).send({ ok: true });
+        await reply.send({ ok: true });
         return;
       }
 
@@ -186,7 +209,7 @@ export class ElevenLabsWebhookController {
         span.setAttribute("webhook.result", "use_case_error");
         span.setAttribute("error", true);
         span.setAttribute("error.kind", "INTERVIEW_ID_MISSING");
-        await reply.code(200).send({ ok: true });
+        await reply.send({ ok: true });
         return;
       }
 
@@ -197,6 +220,7 @@ export class ElevenLabsWebhookController {
           interviewId,
           elevenLabsSessionId: payload.elevenLabsSessionId,
           occurredAt: payload.occurredAt,
+          transcript: payload.transcript,
         }),
       );
       await sendWebhookResult(reply, result, span);
@@ -209,6 +233,7 @@ export class ElevenLabsWebhookController {
     readonly interviewId: string;
     readonly elevenLabsSessionId: string;
     readonly occurredAt: Date;
+    readonly transcript: ReadonlyArray<PostCallTranscriptEntry>;
   }): Promise<Result<TranscriptPersistOutput, ServiceError>> {
     const span = tracer.startSpan("interview.session.transcript-persist");
     try {
@@ -223,77 +248,55 @@ export class ElevenLabsWebhookController {
         return result;
       }
 
-      span.setAttribute("transcript.entry_count", result.unwrap().entryCount);
+      const output = result.unwrap();
+      span.setAttribute("transcript.entry_count", output.entryCount);
       return result;
     } finally {
       span.end();
     }
   }
 
-  private async verifyWebhook(
+  private async verifyHmac(
     req: FastifyRequest,
     reply: FastifyReply,
     span: Span,
   ): Promise<boolean> {
     const rawBody = (req as RawBodyFastifyRequest).rawBody ?? "";
     const signature = getHeader(req.headers["elevenlabs-signature"]);
-    const verified = this.deps.verifier.verify(rawBody, signature);
+    const verified = this.deps.hmacVerifier.verify(rawBody, signature);
     if (verified.isErr()) {
       span.setAttribute("webhook.result", "signature_rejected");
       span.setAttribute("error", true);
       span.setAttribute("error.kind", "INVALID_WEBHOOK_SIGNATURE");
-      await reply.code(401).send({
-        error: { code: "INVALID_WEBHOOK_SIGNATURE", message: "rejected" },
-      });
+      const { status, body } = mapServiceErrorToHttp(
+        Object.assign(new Error("rejected"), {
+          code: "INVALID_WEBHOOK_SIGNATURE",
+        }) as ServiceError,
+      );
+      await reply.code(status).send(body);
       return false;
     }
-
     return true;
   }
 
-  private dispatchTool(
-    payload: ParsedToolPayload,
-  ): Promise<Result<WebhookReceiverOutput, ServiceError>> {
-    if (payload.toolName === "take_note") {
-      return this.deps.recordAgentNoteUseCase.execute({
-        interviewId: payload.interviewId,
-        note: getString(payload.args.note) ?? getString(payload.args.text) ?? "",
-        recordedAtTurn: getNumber(payload.args.recorded_at_turn) ?? undefined,
-        recordedAt: payload.occurredAt,
-      });
+  private async verifyToolSecret(
+    req: FastifyRequest,
+    reply: FastifyReply,
+    span: Span,
+  ): Promise<boolean> {
+    const headerValue = getHeader(req.headers["x-voice-secret"]);
+    const verified = this.deps.toolSecretVerifier.verify(headerValue);
+    if (verified.isErr()) {
+      span.setAttribute("webhook.result", "signature_rejected");
+      span.setAttribute("error", true);
+      span.setAttribute("error.kind", "INVALID_TOOL_SECRET");
+      const { status, body } = mapServiceErrorToHttp(
+        Object.assign(new Error("rejected"), { code: "INVALID_TOOL_SECRET" }) as ServiceError,
+      );
+      await reply.code(status).send(body);
+      return false;
     }
-
-    if (payload.toolName === "score_answer") {
-      return this.deps.recordInternalScoreUseCase.execute({
-        interviewId: payload.interviewId,
-        topicName:
-          getString(payload.args.topic_name) ??
-          getString(payload.args.topicName) ??
-          getString(payload.args.question_id) ??
-          "general",
-        score: getNumber(payload.args.score) ?? 0,
-        justification:
-          getString(payload.args.justification) ??
-          getString(payload.args.rationale) ??
-          "",
-        recordedAtTurn: getNumber(payload.args.recorded_at_turn) ?? undefined,
-        recordedAt: payload.occurredAt,
-      });
-    }
-
-    if (payload.toolName === "end_call") {
-      return this.deps.endInterviewFromAgentUseCase.execute({
-        interviewId: payload.interviewId,
-        reason:
-          getString(payload.args.reason) ??
-          getString(payload.args.end_reason) ??
-          "agent_requested_end_call",
-        recordedAtTurn: getNumber(payload.args.recorded_at_turn) ?? undefined,
-        recordedAt: payload.occurredAt,
-      });
-    }
-
-    return Promise.resolve(Result.Ok({ applied: false }));
+    return true;
   }
 }
 
@@ -313,66 +316,123 @@ async function sendWebhookResult<O extends WebhookReceiverOutput>(
   }
 
   span.setAttribute("webhook.result", "ok");
-  await reply.code(200).send({ ok: true, applied: result.unwrap().applied });
+  await reply.send({ ok: true, applied: result.unwrap().applied });
 }
 
 async function sendParseError(reply: FastifyReply, span: Span): Promise<void> {
   span.setAttribute("webhook.result", "parse_error");
   span.setAttribute("error", true);
   span.setAttribute("error.kind", "INVALID_WEBHOOK_PAYLOAD");
-  await reply.code(400).send({
-    error: {
+  const { status, body } = mapServiceErrorToHttp(
+    Object.assign(new Error("Webhook payload is missing required fields"), {
       code: "INVALID_WEBHOOK_PAYLOAD",
-      message: "Webhook payload is missing required fields",
-    },
-  });
-}
-
-function parseSessionStartPayload(
-  body: unknown,
-): ParsedSessionStartPayload | null {
-  const source = asRecord(body);
-  if (!source) return null;
-
-  const interviewId = getInterviewIdFromPayload(source);
-  const elevenLabsSessionId = getConversationId(source);
-  if (!interviewId || !elevenLabsSessionId) return null;
-
-  return {
-    interviewId,
-    elevenLabsSessionId,
-    occurredAt: getOccurredAt(source),
-  };
-}
-
-function parseToolPayload(body: unknown): ParsedToolPayload | null {
-  const source = asRecord(body);
-  if (!source) return null;
-
-  const base = parseSessionStartPayload(source);
-  const toolName =
-    getString(source.tool_name) ??
-    getString(source.toolName) ??
-    getString(source.name) ??
-    getString(asRecord(source.tool)?.name);
-  if (!base || !toolName) return null;
-
-  return {
-    ...base,
-    toolName,
-    args: getArgs(source),
-  };
+    }) as ServiceError,
+  );
+  await reply.code(status).send(body);
 }
 
 function parsePostCallPayload(body: unknown): ParsedPostCallPayload | null {
   const source = asRecord(body);
   if (!source) return null;
 
-  const elevenLabsSessionId = getConversationId(source);
+  const data = asRecord(source.data);
+  if (!data) return null;
+
+  const elevenLabsSessionId = getString(data.conversation_id);
   if (!elevenLabsSessionId) return null;
 
+  const metadata = asRecord(data.metadata) ?? {};
+  const startTimeSecs =
+    typeof metadata.start_time_unix_secs === "number" ? metadata.start_time_unix_secs : null;
+  const durationSecs =
+    typeof metadata.call_duration_secs === "number" ? metadata.call_duration_secs : 0;
+  const occurredAt =
+    startTimeSecs !== null
+      ? new Date((startTimeSecs + durationSecs) * 1000)
+      : new Date();
+  const terminationReason = getString(metadata.termination_reason) ?? null;
+  const transcript = parseTranscript(data.transcript);
+
+  return { elevenLabsSessionId, occurredAt, terminationReason, transcript };
+}
+
+function parseTranscript(raw: unknown): ReadonlyArray<PostCallTranscriptEntry> {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((row): PostCallTranscriptEntry | null => {
+      const r = asRecord(row);
+      if (!r) return null;
+      const role = r.role === "agent" || r.role === "user" ? r.role : null;
+      if (!role) return null;
+      const message = typeof r.message === "string" ? r.message : null;
+      const timeInCallSecs =
+        typeof r.time_in_call_secs === "number" ? r.time_in_call_secs : 0;
+      const toolResults = parseToolResults(r.tool_results);
+      return { role, message, timeInCallSecs, toolResults };
+    })
+    .filter((entry): entry is PostCallTranscriptEntry => entry !== null);
+}
+
+function parseToolResults(raw: unknown): ReadonlyArray<PostCallToolResult> | null {
+  if (!Array.isArray(raw)) return null;
+  return raw
+    .map((row): PostCallToolResult | null => {
+      const r = asRecord(row);
+      if (!r) return null;
+      const resultType = getString(r.result_type);
+      if (!resultType) return null;
+      const resultValue = asRecord(r.result_value) as
+        | { reason?: string; message?: string }
+        | undefined;
+      return { resultType, resultValue };
+    })
+    .filter((entry): entry is PostCallToolResult => entry !== null);
+}
+
+function parseTakeNotePayload(body: unknown): ParsedTakeNotePayload | null {
+  const source = asRecord(body);
+  if (!source) return null;
+
+  const interviewId = getInterviewIdFromPayload(source);
+  if (!interviewId) return null;
+
+  const note =
+    getString(source.note) ?? getString(source.text) ?? "";
+
   return {
-    elevenLabsSessionId,
+    interviewId,
+    elevenLabsSessionId: getConversationIdFromToolPayload(source) ?? undefined,
+    note,
+    recordedAtTurn: getNumber(source.recorded_at_turn) ?? undefined,
+    occurredAt: getOccurredAt(source),
+  };
+}
+
+function parseScoreAnswerPayload(body: unknown): ParsedScoreAnswerPayload | null {
+  const source = asRecord(body);
+  if (!source) return null;
+
+  const interviewId = getInterviewIdFromPayload(source);
+  if (!interviewId) return null;
+
+  const topicName =
+    getString(source.topic_name) ??
+    getString(source.topicName) ??
+    getString(source.question_id) ??
+    "general";
+  const score = getNumber(source.score) ?? 0;
+  const justification =
+    getString(source.justification) ??
+    getString(source.rationale) ??
+    "";
+
+  return {
+    interviewId,
+    elevenLabsSessionId: getConversationIdFromToolPayload(source) ?? undefined,
+    topicName,
+    score,
+    justification,
+    recordedAtTurn: getNumber(source.recorded_at_turn) ?? undefined,
     occurredAt: getOccurredAt(source),
   };
 }
@@ -395,6 +455,15 @@ function getConversationId(source: Record<string, unknown>): string | null {
   );
 }
 
+function getConversationIdFromToolPayload(source: Record<string, unknown>): string | null {
+  const dynamicVariables = getDynamicVariables(source);
+  return (
+    getString(dynamicVariables?.conversation_id) ??
+    getString(dynamicVariables?.conversationId) ??
+    getConversationId(source)
+  );
+}
+
 function getDynamicVariables(
   source: Record<string, unknown>,
 ): Record<string, unknown> | null {
@@ -402,16 +471,6 @@ function getDynamicVariables(
     asRecord(source.dynamic_variables) ??
     asRecord(source.dynamicVariables) ??
     asRecord(asRecord(source.conversation_initiation_client_data)?.dynamic_variables)
-  );
-}
-
-function getArgs(source: Record<string, unknown>): Readonly<Record<string, unknown>> {
-  return (
-    asRecord(source.parameters) ??
-    asRecord(source.args) ??
-    asRecord(source.arguments) ??
-    asRecord(source.tool_call) ??
-    {}
   );
 }
 

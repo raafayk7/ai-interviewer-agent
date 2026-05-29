@@ -20,7 +20,7 @@
   </head>
   <body>
     <h1>Phase 9.5 Live Validation Harness</h1>
-    <p class="sub">Drives the ElevenLabs Conversational AI gate. The four checks (initiation fires, override honored, correlation token surfaces, end_call dispatches to /tools) are observable from the backend logs / Langfuse spans.</p>
+    <p class="sub">Drives the ElevenLabs Conversational AI gate. The three checks (override honored server-side, tool URLs fire per-tool, post-call transcript arrives) are observable from the backend logs / OTel spans.</p>
 
     <div class="row"><label style="width:90px">Backend</label><input id="backend" value="http://localhost:3002" /></div>
     <div class="row"><label style="width:90px">Interview ID</label><input id="interviewId" placeholder="(filled from URL params)" /></div>
@@ -65,7 +65,7 @@
           if (!interviewId || !token) { log("interviewId and token required", "err"); $("start").disabled = false; return; }
 
           log(`POST ${backend}/interviews/${interviewId}/candidate-session?token=<…>`, "info");
-          let signedUrl, sessionToken;
+          let signedUrl, overrides, dynamicVariables;
           try {
             const res = await fetch(
               `${backend}/interviews/${interviewId}/candidate-session?token=${encodeURIComponent(token)}`,
@@ -74,8 +74,9 @@
             const body = await res.json();
             if (!res.ok) { log(`backend ${res.status}: ${JSON.stringify(body)}`, "err"); $("start").disabled = false; return; }
             signedUrl = body.signedUrl;
-            sessionToken = body.sessionToken;
-            log(`got signedUrl (${signedUrl.slice(0, 50)}…) and sessionToken (${sessionToken.slice(0, 12)}…)`, "info");
+            overrides = body.overrides;
+            dynamicVariables = body.dynamicVariables;
+            log(`got signedUrl (${signedUrl.slice(0, 50)}…), overrides: prompt=${overrides?.agent?.prompt?.prompt?.slice?.(0, 30) ?? "none"}…`, "info");
           } catch (e) { log(`backend POST failed: ${e?.message ?? e}`, "err"); $("start").disabled = false; return; }
 
           log("Requesting microphone…", "info");
@@ -83,11 +84,13 @@
             await navigator.mediaDevices.getUserMedia({ audio: true });
           } catch (e) { log(`mic denied: ${e?.message ?? e}`, "err"); $("start").disabled = false; return; }
 
-          log("Starting Conversation.startSession with dynamicVariables.correlation_token=<sessionToken>…", "info");
+          log("Starting Conversation.startSession with server-built overrides + dynamicVariables…", "info");
           try {
             conversation = await Conversation.startSession({
               signedUrl,
-              dynamicVariables: { correlation_token: sessionToken },
+              connectionType: "websocket",
+              overrides,
+              dynamicVariables,
               onConnect: ({ conversationId }) => log(`onConnect — conversationId=${conversationId}`, "info"),
               onDisconnect: () => log("onDisconnect", "warn"),
               onMessage: ({ message, source }) => log(`onMessage [${source}] ${message?.slice?.(0, 120) ?? JSON.stringify(message).slice(0, 120)}`, "info"),

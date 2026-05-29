@@ -10,6 +10,19 @@ import {
 import { SPEAKER } from "@repo/domain";
 import type { ConversationalClientHandle } from "./conversational-provider.js";
 
+function extractConversationIdFromUrl(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    return (
+      parsed.searchParams.get("conversation_id") ??
+      parsed.searchParams.get("conversationId") ??
+      null
+    );
+  } catch {
+    return null;
+  }
+}
+
 export class ElevenLabsConversationalService implements IConversationalAgentService {
   constructor(private readonly handle: ConversationalClientHandle) {}
 
@@ -23,7 +36,22 @@ export class ElevenLabsConversationalService implements IConversationalAgentServ
           includeConversationId: true,
         });
 
-        return { signedUrl: response.signedUrl };
+        // SDK type is { signedUrl } only; with includeConversationId the id may
+        // surface as an untyped passthrough field (raw snake_case wire key) or as
+        // a query param on the signed URL. Check both casings, then the URL.
+        const raw = response as unknown as Record<string, unknown>;
+        const conversationId =
+          (typeof raw["conversation_id"] === "string" ? (raw["conversation_id"] as string) : undefined) ??
+          (typeof raw["conversationId"] === "string" ? (raw["conversationId"] as string) : undefined) ??
+          extractConversationIdFromUrl(response.signedUrl);
+
+        if (!conversationId) {
+          throw new Error(
+            "getSignedUrl returned no conversationId despite includeConversationId: true",
+          );
+        }
+
+        return { signedUrl: response.signedUrl, conversationId };
       },
       (err) =>
         new ConversationalSignedUrlFailedError(

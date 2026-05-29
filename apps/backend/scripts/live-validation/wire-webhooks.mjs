@@ -1,7 +1,6 @@
 // scripts/live-validation/wire-webhooks.mjs
-// Wires the throwaway agent, workspace webhook, and the 3 tool URLs to the
-// live ngrok tunnel. Captures the workspace webhook HMAC secret and writes it
-// into .env so the backend's verifier signs/verifies with the right secret.
+// Wires per-tool webhook URLs and x-voice-secret headers to the live ngrok tunnel.
+// Also patches the agent's workspace_overrides to point at the post-call webhook.
 
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import fs from "node:fs/promises";
@@ -13,29 +12,39 @@ if (!tunnel || !tunnel.startsWith("https://")) {
 }
 
 const apiKey = process.env.ELEVENLABS_API_KEY;
+const toolSecret = process.env.ELEVENLABS_TOOL_WEBHOOK_SECRET;
+if (!toolSecret) {
+  console.error("ELEVENLABS_TOOL_WEBHOOK_SECRET not set");
+  process.exit(2);
+}
+
 const client = new ElevenLabsClient({ apiKey });
 const ARTIFACT_PATH = new URL("./.artifacts.json", import.meta.url).pathname;
 const artifacts = JSON.parse(await fs.readFile(ARTIFACT_PATH, "utf8"));
 
-const INITIATION_URL = `${tunnel}/webhooks/elevenlabs/initiation`;
-const TOOLS_URL = `${tunnel}/webhooks/elevenlabs/tools`;
 const POST_CALL_URL = `${tunnel}/webhooks/elevenlabs/post-call`;
 
-// 1. (SKIPPED — API key lacks webhooks_write scope.) Workspace post-call webhook
-//    is not provisioned for this validation run. Checks (a)/(b)/(c)/(d) do not
-//    depend on it; check (d) verifies end_call dispatches to /tools (per-agent).
-//    See operator setup checklist follow-up: add webhooks_write to the API key
-//    when post-call/transcript handling is required.
-console.log("Skipping workspace post-call webhook (API key lacks webhooks_write).");
+const TOOL_URLS = {
+  next_question: `${tunnel}/webhooks/elevenlabs/tools/next_question`,
+  score_answer: `${tunnel}/webhooks/elevenlabs/tools/score_answer`,
+  take_note: `${tunnel}/webhooks/elevenlabs/tools/take_note`,
+};
 
-// 3. Patch the 3 custom tools' apiSchema.url
-console.log(`\nPatching 3 custom tools' apiSchema.url to ${TOOLS_URL}…`);
+// interview_id is injected from the session dynamic variable (dynamicVariable),
+// NOT filled by the LLM — so it carries no description and is in `required`.
 const TOOL_SCHEMAS = {
-  next_question: { type: "object", description: "Empty payload.", properties: {} },
+  next_question: {
+    type: "object", description: "Advance to the next planned interview topic.",
+    required: ["interview_id"],
+    properties: {
+      interview_id: { type: "string", dynamicVariable: "interview_id" },
+    },
+  },
   score_answer: {
     type: "object", description: "Score for the candidate's most recent answer.",
-    required: ["topic_name", "score", "justification"],
+    required: ["interview_id", "topic_name", "score", "justification"],
     properties: {
+      interview_id: { type: "string", dynamicVariable: "interview_id" },
       topic_name: { type: "string", description: "Planned topic this score applies to." },
       score: { type: "integer", description: "Integer 0..5." },
       justification: { type: "string", description: "One-sentence reason for the score." },
@@ -43,41 +52,43 @@ const TOOL_SCHEMAS = {
   },
   take_note: {
     type: "object", description: "An observation about the candidate.",
-    required: ["note"],
-    properties: { note: { type: "string", description: "A single observation, complete sentence." } },
+    required: ["interview_id", "note"],
+    properties: {
+      interview_id: { type: "string", dynamicVariable: "interview_id" },
+      note: { type: "string", description: "A single observation, complete sentence." },
+    },
   },
 };
+
+// 1. Patch each tool to its dedicated URL + inject x-voice-secret header
+console.log("\nPatching 3 custom tools to per-tool URLs with x-voice-secret header…");
 for (const [name, id] of Object.entries(artifacts.toolIds)) {
+  const url = TOOL_URLS[name];
   await client.conversationalAi.tools.update(id, {
     toolConfig: {
       type: "webhook",
       name,
       description: `${name} (live-validation)`,
       responseTimeoutSecs: 5,
-      apiSchema: { url: TOOLS_URL, method: "POST", requestBodySchema: TOOL_SCHEMAS[name] },
-    },
-  });
-  console.log(`  ${name} -> ${TOOLS_URL}`);
-}
-
-// 4. Patch the agent's platform_settings.workspace_overrides with initiation webhook URL + post-call webhook id
-console.log(`\nPatching agent platform_settings.workspace_overrides…`);
-await client.conversationalAi.agents.update(artifacts.agentId, {
-  platformSettings: {
-    workspaceOverrides: {
-      conversationInitiationClientDataWebhook: {
-        url: INITIATION_URL,
-        requestHeaders: {},
+      apiSchema: {
+        url,
+        method: "POST",
+        requestBodySchema: TOOL_SCHEMAS[name],
+        requestHeaders: { "x-voice-secret": toolSecret },
       },
     },
-  },
-});
-console.log(`  initiation webhook URL -> ${INITIATION_URL}`);
-console.log(`  (post-call webhook id  -> SKIPPED, see note above)`);
+  });
+  console.log(`  ${name} -> ${url}`);
+}
+
+// 2. Post-call webhook is now registered + linked by register-post-call-webhook.mjs
+//    (workspace-level settings.update + HMAC secret capture). Run it separately.
+console.log(`\nPost-call webhook: register + link with a separate script.`);
+console.log(`  run: node register-post-call-webhook.mjs ${tunnel}`);
+console.log(`  expected post-call URL: ${POST_CALL_URL}`);
 
 artifacts.tunnel = tunnel;
-artifacts.initiationUrl = INITIATION_URL;
-artifacts.toolsUrl = TOOLS_URL;
+artifacts.toolUrls = TOOL_URLS;
 artifacts.postCallUrl = POST_CALL_URL;
 await fs.writeFile(ARTIFACT_PATH, JSON.stringify(artifacts, null, 2));
-console.log("\nArtifact updated. All webhooks wired.");
+console.log("\nArtifact updated. All tool webhooks wired.");

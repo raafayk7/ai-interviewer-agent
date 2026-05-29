@@ -1,6 +1,7 @@
 // scripts/live-validation/cleanup.mjs
-// Deletes the throwaway agent + 3 tools, clears the workspace initiation webhook
-// baseline, deletes the seeded interview row. Idempotent.
+// Deletes the throwaway agent + 3 tools, deletes the workspace post-call webhook,
+// clears the workspace initiation webhook baseline, deletes the seeded interview
+// row. Idempotent.
 
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import postgres from "postgres";
@@ -12,6 +13,18 @@ const client = new ElevenLabsClient({ apiKey: process.env.ELEVENLABS_API_KEY });
 
 console.log("Cleanup starting…");
 
+// 0. Delete the workspace post-call webhook (registered by
+//    register-post-call-webhook.mjs). Tolerate 404 / already-deleted.
+console.log("\n[0/5] Deleting workspace post-call webhook…");
+if (artifacts.postCallWebhookId) {
+  try {
+    await client.webhooks.delete(artifacts.postCallWebhookId);
+    console.log(`  deleted ${artifacts.postCallWebhookId}`);
+  } catch (e) { console.log("  skip:", e?.message ?? e); }
+} else {
+  console.log("  no postCallWebhookId in artifacts — nothing to delete");
+}
+
 // 1. Detach agent's workspace_overrides + workspace-level initiation webhook
 //    so other agents in the workspace don't keep pointing at the dead tunnel.
 console.log("\n[1/5] Clearing agent workspace_overrides…");
@@ -22,15 +35,8 @@ try {
   console.log("  cleared");
 } catch (e) { console.log("  skip:", e?.message ?? e); }
 
-console.log("\n[2/5] Clearing workspace baseline initiation webhook…");
-try {
-  const r = await fetch("https://api.elevenlabs.io/v1/convai/settings", {
-    method: "PATCH",
-    headers: { "xi-api-key": process.env.ELEVENLABS_API_KEY, "content-type": "application/json" },
-    body: JSON.stringify({ conversation_initiation_client_data_webhook: null }),
-  });
-  console.log("  PATCH /convai/settings ->", r.status);
-} catch (e) { console.log("  skip:", e?.message ?? e); }
+// [2/5] Legacy cleanup — initiation webhook pattern removed in Phase 9.5 revision (ADR-033/034); no-op.
+console.log("\n[2/5] Initiation webhook cleanup — no-op (removed in Phase 9.5 revision).");
 
 // 3. Delete agent
 console.log("\n[3/5] Deleting agent…");
@@ -43,7 +49,7 @@ try {
 console.log("\n[4/5] Deleting tools…");
 for (const [name, id] of Object.entries(artifacts.toolIds)) {
   try {
-    await client.conversationalAi.tools.delete(id);
+    await client.conversationalAi.tools.delete(id, { force: true });
     console.log(`  deleted ${name} (${id})`);
   } catch (e) { console.log(`  skip ${name}:`, e?.message ?? e); }
 }

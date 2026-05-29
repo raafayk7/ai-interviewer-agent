@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Date: 2026-05-09.
+Accepted. Date: 2026-05-09. Superseded as the primary voice pipeline by ADR-029, 2026-05-29; the sandwich (STT → LLM → TTS) architecture documented here is retained as the documented fallback.
 
 ## Context
 

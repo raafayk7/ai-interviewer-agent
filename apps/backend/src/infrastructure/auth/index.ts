@@ -6,17 +6,14 @@ export {
   type CandidateSignedLinkConfig,
 } from "./candidate-signed-link.js";
 export {
-  ConversationCorrelationToken,
-  InvalidConversationCorrelationTokenError,
-  conversationCorrelationTokenFromEnv,
-} from "./conversation-correlation-token.js";
-export type {
-  ConversationCorrelationTokenConfig,
-  ConversationCorrelationTokenPayload,
-} from "./conversation-correlation-token.js";
-export {
   ElevenLabsWebhookVerifier,
   InvalidWebhookSignatureError,
   elevenLabsWebhookVerifierFromEnv,
 } from "./elevenlabs-webhook-verifier.js";
 export type { ElevenLabsWebhookVerifierConfig } from "./elevenlabs-webhook-verifier.js";
+export {
+  ElevenLabsToolSecretVerifier,
+  InvalidToolSecretError,
+  elevenLabsToolSecretVerifierFromEnv,
+} from "./elevenlabs-tool-secret-verifier.js";
+export type { ToolSecretVerifierConfig } from "./elevenlabs-tool-secret-verifier.js";

@@ -33,10 +33,6 @@ import {
   type RegisterCandidateSessionRoutesOptions,
 } from "./presentation/routes/candidate-session.routes.js";
 import {
-  registerElevenLabsInitiationWebhookRoutes,
-  type RegisterElevenLabsInitiationWebhookRoutesOptions,
-} from "./presentation/routes/webhooks/elevenlabs-initiation-webhook.routes.js";
-import {
   registerElevenLabsWebhookRoutes,
   type RegisterElevenLabsWebhookRoutesOptions,
 } from "./presentation/routes/webhooks/elevenlabs-webhooks.routes.js";
@@ -56,7 +52,6 @@ export interface BuildAppOptions {
   readonly recruiterDocuments?: RegisterRecruiterDocumentRoutesOptions;
   readonly candidateInterviews?: RegisterCandidateInterviewRoutesOptions;
   readonly candidateSession?: RegisterCandidateSessionRoutesOptions;
-  readonly elevenLabsInitiationWebhook?: RegisterElevenLabsInitiationWebhookRoutesOptions;
   readonly elevenLabsWebhooks?: RegisterElevenLabsWebhookRoutesOptions;
 }
 
@@ -92,7 +87,6 @@ export async function buildApp(options: BuildAppOptions = {}) {
     !options.recruiterDocuments &&
     !options.candidateInterviews &&
     !options.candidateSession &&
-    !options.elevenLabsInitiationWebhook &&
     !options.elevenLabsWebhooks;
 
   const authDeps =
@@ -173,21 +167,6 @@ export async function buildApp(options: BuildAppOptions = {}) {
     await app.register(registerCandidateSessionRoutes, {
       prefix: "",
       ...candidateSession,
-    });
-  }
-
-  const elevenLabsInitiationWebhook =
-    options.elevenLabsInitiationWebhook ??
-    (composeDefaults
-      ? {
-          deps: (await import("./composition/elevenlabs-initiation-webhook.composition.js")).buildElevenLabsInitiationWebhookDeps(),
-        }
-      : undefined);
-
-  if (elevenLabsInitiationWebhook) {
-    await app.register(registerElevenLabsInitiationWebhookRoutes, {
-      prefix: "/webhooks/elevenlabs/initiation",
-      ...elevenLabsInitiationWebhook,
     });
   }
 

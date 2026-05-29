@@ -1,7 +1,7 @@
 // scripts/live-validation/provision-agent.mjs
 // Live-validation Phase 9.5: provisions the three custom tools + throwaway agent.
-// Stub URLs for initiation webhook + post-call webhook are wired in step 7 once
-// the tunnel URL is known. Outputs an artifact file with ids for cleanup.
+// Per-tool URLs and x-voice-secret headers are wired in step 7 once the tunnel
+// URL is known. Outputs an artifact file with ids for cleanup.
 
 import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import fs from "node:fs/promises";
@@ -12,7 +12,8 @@ if (!apiKey) {
   process.exit(2);
 }
 
-const PLACEHOLDER_URL = "https://placeholder.invalid/webhooks/elevenlabs/tools";
+// Per-tool placeholder URLs — wired to actual tunnel URLs by wire-webhooks.mjs
+const PLACEHOLDER = (name) => `https://placeholder.invalid/webhooks/elevenlabs/tools/${name}`;
 const ARTIFACT_PATH = new URL("./.artifacts.json", import.meta.url).pathname;
 const client = new ElevenLabsClient({ apiKey });
 
@@ -47,9 +48,10 @@ async function createWebhookTool(name, description, requestBodySchema) {
       description,
       responseTimeoutSecs: 5,
       apiSchema: {
-        url: PLACEHOLDER_URL,
+        url: PLACEHOLDER(name),
         method: "POST",
         requestBodySchema,
+        requestHeaders: { "x-voice-secret": "CHANGE_ME_IN_WIRE_STEP" },
       },
     },
   });
@@ -64,14 +66,24 @@ async function main() {
   const tools = {
     next_question: await ensureTool(artifacts, "next_question",
       "Advance to the next planned interview topic.",
-      { type: "object", description: "Empty payload.", properties: {} }),
+      {
+        type: "object",
+        description: "Advance to the next planned interview topic.",
+        required: ["interview_id"],
+        properties: {
+          // Injected from the session dynamic variable, NOT filled by the LLM.
+          interview_id: { type: "string", dynamicVariable: "interview_id" },
+        },
+      }),
     score_answer: await ensureTool(artifacts, "score_answer",
       "Internally record a score for the candidate's most recent answer.",
       {
         type: "object",
         description: "Score for the candidate's most recent answer.",
-        required: ["topic_name", "score", "justification"],
+        required: ["interview_id", "topic_name", "score", "justification"],
         properties: {
+          // Injected from the session dynamic variable, NOT filled by the LLM.
+          interview_id: { type: "string", dynamicVariable: "interview_id" },
           topic_name: { type: "string", description: "The planned topic this score applies to." },
           score: { type: "integer", description: "Integer 0..5, where 5 is excellent." },
           justification: { type: "string", description: "One-sentence reason for the score." },
@@ -82,8 +94,10 @@ async function main() {
       {
         type: "object",
         description: "An observation about the candidate.",
-        required: ["note"],
+        required: ["interview_id", "note"],
         properties: {
+          // Injected from the session dynamic variable, NOT filled by the LLM.
+          interview_id: { type: "string", dynamicVariable: "interview_id" },
           note: { type: "string", description: "A single observation, written as a complete sentence." },
         },
       }),
@@ -101,15 +115,14 @@ async function main() {
     conversationConfig: {
       agent: {
         prompt: {
-          prompt:
-            "You are a placeholder. Your real instructions will be injected by the conversation-initiation webhook.",
+          // Real instructions are injected via Conversation.startSession({ overrides })
+          prompt: "You are a placeholder. Your real instructions will be injected by the browser via Conversation.startSession overrides.",
           llm: "gemini-2.5-flash",
           toolIds: [tools.next_question, tools.score_answer, tools.take_note],
           builtInTools: {
             endCall: {
               name: "end_call",
-              description:
-                "End the call when the interview is complete.",
+              description: "End the call when the interview is complete.",
               params: { systemToolType: "end_call" },
             },
           },
@@ -124,7 +137,6 @@ async function main() {
     },
     platformSettings: {
       overrides: {
-        enableConversationInitiationClientDataFromWebhook: true,
         conversationConfigOverride: {
           agent: {
             firstMessage: true,
@@ -133,7 +145,7 @@ async function main() {
           },
         },
       },
-      // workspaceOverrides patched in step 7 once tunnel URL is known
+      // workspaceOverrides (post-call webhook) patched in step 7 once tunnel URL is known
     },
   });
   console.log(`  agent created: ${agentRes.agentId}`);

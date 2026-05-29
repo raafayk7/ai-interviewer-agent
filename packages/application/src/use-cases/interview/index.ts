@@ -39,29 +39,18 @@ export {
   type StartCandidateSessionOutput,
 } from "./start-candidate-session.use-case.js";
 export {
-  AssembleConversationInitiationContextUseCase,
-  type AssembleInitiationInput,
-  type AssembleInitiationOutput,
-} from "./assemble-conversation-initiation-context.use-case.js";
-export {
-  StartInterviewFromWebhookUseCase,
-  type StartFromWebhookInput,
-  type WebhookReceiverOutput,
-} from "./start-interview-from-webhook.use-case.js";
-export {
   RecordAgentNoteUseCase,
   type RecordAgentNoteInput,
 } from "./record-agent-note.use-case.js";
 export {
   RecordInternalScoreUseCase,
   type RecordInternalScoreInput,
+  type WebhookReceiverOutput,
 } from "./record-internal-score.use-case.js";
-export {
-  EndInterviewFromAgentUseCase,
-  type EndInterviewFromAgentInput,
-} from "./end-interview-from-agent.use-case.js";
 export {
   PersistCompletedTranscriptUseCase,
   type PersistCompletedTranscriptInput,
   type PersistCompletedTranscriptOutput,
+  type PostCallTranscriptEntry,
+  type PostCallToolResult,
 } from "./persist-completed-transcript.use-case.js";

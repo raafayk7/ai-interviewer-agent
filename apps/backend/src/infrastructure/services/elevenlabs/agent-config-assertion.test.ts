@@ -18,12 +18,11 @@ const makeHandle = (agent: unknown): ConversationalClientHandle =>
   }) as unknown as ConversationalClientHandle;
 
 describe("assertElevenLabsAgentConfig", () => {
-  it("passes when initiation webhook and prompt override allow-list flags are enabled", async () => {
+  it("passes when prompt override allow-list flags are enabled", async () => {
     const result = await assertElevenLabsAgentConfig(
       makeHandle({
         platformSettings: {
           overrides: {
-            enableConversationInitiationClientDataFromWebhook: true,
             conversationConfigOverride: {
               agent: {
                 firstMessage: true,
@@ -45,9 +44,6 @@ describe("assertElevenLabsAgentConfig", () => {
 
     expect(result.isErr()).toBe(true);
     expect(result.unwrapErr()).toBeInstanceOf(AgentConfigDriftError);
-    expect(result.unwrapErr().message).toContain(
-      "enableConversationInitiationClientDataFromWebhook",
-    );
     expect(result.unwrapErr().message).toContain("agent.prompt.prompt");
     expect(result.unwrapErr().message).toContain("agent.firstMessage");
   });

@@ -2,8 +2,12 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { Result } from "@carbonteq/fp";
 import { ServiceInfraError } from "@repo/application";
 
+const DEFAULT_TOLERANCE_SECS = 30 * 60;
+
 export interface ElevenLabsWebhookVerifierConfig {
   readonly secret: string;
+  readonly toleranceSecs?: number;
+  readonly nowMs?: () => number;
 }
 
 export class InvalidWebhookSignatureError extends ServiceInfraError {
@@ -24,6 +28,19 @@ export class ElevenLabsWebhookVerifier {
     const parsed = parseSignatureHeader(signatureHeader);
     if (!parsed) {
       return this.invalid("ElevenLabs webhook signature is malformed");
+    }
+
+    const timestampSecs = Number(parsed.timestamp);
+    if (!Number.isFinite(timestampSecs)) {
+      return this.invalid("ElevenLabs webhook timestamp is malformed");
+    }
+    const nowSecs = Math.floor((this.config.nowMs?.() ?? Date.now()) / 1000);
+    const ageSecs = Math.abs(nowSecs - timestampSecs);
+    const toleranceSecs = this.config.toleranceSecs ?? DEFAULT_TOLERANCE_SECS;
+    if (ageSecs > toleranceSecs) {
+      return this.invalid(
+        `ElevenLabs webhook timestamp outside tolerance (${ageSecs}s > ${toleranceSecs}s)`,
+      );
     }
 
     const expected = createHmac("sha256", this.config.secret)

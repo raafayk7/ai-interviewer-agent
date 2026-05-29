@@ -14,8 +14,11 @@ const makeService = (client: unknown): ElevenLabsConversationalService =>
   } as ConversationalClientHandle);
 
 describe("ElevenLabsConversationalService", () => {
-  it("issues single-use signed URLs with includeConversationId enabled", async () => {
-    const getSignedUrl = vi.fn().mockResolvedValue({ signedUrl: "wss://signed-url" });
+  it("issues single-use signed URLs with includeConversationId enabled and returns conversationId", async () => {
+    const getSignedUrl = vi.fn().mockResolvedValue({
+      signedUrl: "wss://signed-url",
+      conversationId: "conv-abc-123",
+    });
     const service = makeService({
       conversationalAi: { conversations: { getSignedUrl } },
     });
@@ -23,7 +26,7 @@ describe("ElevenLabsConversationalService", () => {
     const result = await service.issueSignedUrl({ agentId: "agent-1" });
 
     expect(result.isOk()).toBe(true);
-    expect(result.unwrap()).toEqual({ signedUrl: "wss://signed-url" });
+    expect(result.unwrap()).toEqual({ signedUrl: "wss://signed-url", conversationId: "conv-abc-123" });
     expect(getSignedUrl).toHaveBeenCalledWith({
       agentId: "agent-1",
       includeConversationId: true,

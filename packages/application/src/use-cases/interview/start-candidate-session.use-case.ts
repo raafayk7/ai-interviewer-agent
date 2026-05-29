@@ -8,7 +8,7 @@ import {
 import { ServiceUnknownError, type ServiceError } from "../../core/service-error.js";
 import { UseCase } from "../../core/use-case.js";
 import type { IConversationalAgentService } from "../../ports/conversational-agent/index.js";
-import type { IConversationCorrelationTokenIssuer } from "../../ports/conversation-correlation-token/index.js";
+import { assembleInterviewSystemPrompt } from "./system-prompt-assembler.js";
 
 export interface StartCandidateSessionInput {
   readonly interviewId: string;
@@ -17,7 +17,12 @@ export interface StartCandidateSessionInput {
 
 export interface StartCandidateSessionOutput {
   readonly signedUrl: string;
-  readonly sessionToken: string;
+  readonly overrides: {
+    readonly agent: {
+      readonly prompt: { readonly prompt: string };
+    };
+  };
+  readonly dynamicVariables: Readonly<Record<string, string>>;
 }
 
 export class StartCandidateSessionUseCase extends UseCase<
@@ -27,7 +32,6 @@ export class StartCandidateSessionUseCase extends UseCase<
   constructor(
     private readonly interviews: IInterviewRepository,
     private readonly agent: IConversationalAgentService,
-    private readonly tokens: IConversationCorrelationTokenIssuer,
   ) {
     super();
   }
@@ -51,28 +55,78 @@ export class StartCandidateSessionUseCase extends UseCase<
     }
 
     const interview = interviewOrError.unwrap();
-    if (interview.status !== INTERVIEW_STATUS.SCHEDULED) {
+    if (
+      interview.status !== INTERVIEW_STATUS.SCHEDULED &&
+      interview.status !== INTERVIEW_STATUS.IN_PROGRESS
+    ) {
       return Result.Err(
-        new InvalidInterviewInputError(`Interview ${interview.id} is not SCHEDULED`) as ServiceError,
+        new InvalidInterviewInputError(
+          `Interview ${interview.id} is not SCHEDULED or IN_PROGRESS`,
+        ) as ServiceError,
       );
     }
 
-    const hasPlan = interview.interviewPlan.match({
-      Some: () => true,
-      None: () => false,
+    const planOrError = interview.interviewPlan.match({
+      Some: (p) => Result.Ok(p),
+      None: () => Result.Err(new InvalidInterviewInputError("Interview has no plan") as ServiceError),
     });
-    if (!hasPlan) {
-      return Result.Err(new InvalidInterviewInputError("Interview has no plan") as ServiceError);
+    if (planOrError.isErr()) {
+      return planOrError;
     }
+    const plan = planOrError.unwrap();
 
     const issued = await this.agent.issueSignedUrl({ agentId: input.agentId });
     if (issued.isErr()) {
       return Result.Err(issued.unwrapErr() as ServiceError);
     }
+    const { signedUrl, conversationId } = issued.unwrap();
+
+    const bound = interview.bindElevenLabsSession(conversationId);
+    if (bound.isErr()) {
+      return Result.Err(bound.unwrapErr() as ServiceError);
+    }
+    let next = bound.unwrap();
+
+    // SCHEDULED → IN_PROGRESS transition — this is the only server-side moment
+    // we control in the browser SDK flow. Skip when already IN_PROGRESS
+    // (candidate refresh / reconnect re-issuing a single-use signed URL).
+    if (next.status === INTERVIEW_STATUS.SCHEDULED) {
+      const started = next.start(new Date());
+      if (started.isErr()) {
+        return Result.Err(started.unwrapErr() as ServiceError);
+      }
+      next = started.unwrap();
+    }
+
+    if (next !== interview) {
+      const saved = await this.interviews.save(next);
+      if (saved.isErr()) {
+        return Result.Err(
+          new ServiceUnknownError(saved.unwrapErr().message, "InterviewRepository.save"),
+        );
+      }
+    }
+
+    const systemPrompt = assembleInterviewSystemPrompt({
+      jobDescription: next.jobDescription,
+      candidateInfo: next.candidateInfo,
+      clientInstructions: next.clientInstructions,
+      interviewPlan: plan,
+    });
 
     return Result.Ok({
-      signedUrl: issued.unwrap().signedUrl,
-      sessionToken: this.tokens.issue(interview.id),
+      signedUrl,
+      overrides: {
+        agent: {
+          prompt: { prompt: systemPrompt },
+        },
+      },
+      dynamicVariables: {
+        candidate_name: next.candidateInfo.fullName,
+        job_title: next.jobDescription.title,
+        target_duration_minutes: String(plan.targetDurationMinutes),
+        interview_id: next.id,
+      },
     });
   }
 }

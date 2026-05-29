@@ -33,12 +33,6 @@ export async function assertElevenLabsAgentConfig(
   const firstMessageAllow = overrides?.conversationConfigOverride?.agent?.firstMessage;
   const problems: string[] = [];
 
-  if (overrides?.enableConversationInitiationClientDataFromWebhook !== true) {
-    problems.push(
-      "platformSettings.overrides.enableConversationInitiationClientDataFromWebhook must be true",
-    );
-  }
-
   if (promptAllow !== true) {
     problems.push(
       "platformSettings.overrides.conversationConfigOverride.agent.prompt.prompt must be true",

@@ -12,6 +12,7 @@ export interface IssueSignedUrlInput {
 
 export interface IssueSignedUrlOutput {
   readonly signedUrl: string;
+  readonly conversationId: string;
 }
 
 export interface ConversationalTranscriptRow {
@@ -22,8 +23,10 @@ export interface ConversationalTranscriptRow {
 
 export interface IConversationalAgentService {
   /**
-   * The adapter must pass includeConversationId=true so the signed URL is
-   * single-use. Per-session overrides are intentionally not part of this call.
+   * Must pass includeConversationId=true. Returns both the signed URL (to hand
+   * to the browser) and the conversationId (to bind on the interview entity as
+   * elevenLabsSessionId before responding). The conversationId is the
+   * trustworthy correlation key — no separate HMAC token is needed.
    */
   issueSignedUrl(
     input: IssueSignedUrlInput,
