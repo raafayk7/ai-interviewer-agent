@@ -35,10 +35,6 @@ describe("useInterviewSessionStore — initial state", () => {
   it("starts with an empty transcript", () => {
     expect(useInterviewSessionStore.getState().transcript).toHaveLength(0);
   });
-
-  it("starts with reconnectAttempts 0", () => {
-    expect(useInterviewSessionStore.getState().reconnectAttempts).toBe(0);
-  });
 });
 
 // ---------------------------------------------------------------------------
@@ -145,24 +141,6 @@ describe("useInterviewSessionStore — appendTranscript", () => {
 });
 
 // ---------------------------------------------------------------------------
-// incrementReconnect
-// ---------------------------------------------------------------------------
-
-describe("useInterviewSessionStore — incrementReconnect", () => {
-  it("increments reconnectAttempts by 1", () => {
-    useInterviewSessionStore.getState().incrementReconnect();
-    expect(useInterviewSessionStore.getState().reconnectAttempts).toBe(1);
-  });
-
-  it("increments reconnectAttempts cumulatively", () => {
-    useInterviewSessionStore.getState().incrementReconnect();
-    useInterviewSessionStore.getState().incrementReconnect();
-    useInterviewSessionStore.getState().incrementReconnect();
-    expect(useInterviewSessionStore.getState().reconnectAttempts).toBe(3);
-  });
-});
-
-// ---------------------------------------------------------------------------
 // setTranscriptVisible
 // ---------------------------------------------------------------------------
 
@@ -206,13 +184,6 @@ describe("useInterviewSessionStore — reset", () => {
     ]);
     useInterviewSessionStore.getState().reset();
     expect(useInterviewSessionStore.getState().transcript).toHaveLength(0);
-  });
-
-  it("resets reconnectAttempts to 0", () => {
-    useInterviewSessionStore.getState().incrementReconnect();
-    useInterviewSessionStore.getState().incrementReconnect();
-    useInterviewSessionStore.getState().reset();
-    expect(useInterviewSessionStore.getState().reconnectAttempts).toBe(0);
   });
 
   it("resets speaker to 'silent'", () => {

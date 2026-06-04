@@ -7,3 +7,4 @@ export * from "./interview.types";
 export * from "./candidate-link.types";
 export * from "./report.types";
 export * from "./candidate-interview-view.types";
+export * from "./candidate-session.types";

@@ -23,16 +23,11 @@ interface InterviewSessionState {
   micMuted: boolean;
   transcriptVisible: boolean;
   transcript: ReadonlyArray<TranscriptEntry>;
-  reconnectAttempts: number;
-  /** RMS audio level 0..1, throttled writes from the worklet so subscribers don't re-render per chunk. */
-  audioLevel: number;
   setConnectionState: (s: ConnectionState) => void;
   setSpeaker: (s: SpeakerState) => void;
   setMicMuted: (b: boolean) => void;
   setTranscriptVisible: (b: boolean) => void;
   appendTranscript: (entries: ReadonlyArray<TranscriptEntry>) => void;
-  incrementReconnect: () => void;
-  setAudioLevel: (n: number) => void;
   reset: () => void;
 }
 
@@ -43,19 +38,12 @@ function loadInitialTranscriptVisible(): boolean {
   return window.localStorage.getItem(TRANSCRIPT_LS_KEY) === "1";
 }
 
-// Audio-level granularity. Smaller deltas don't move the UI perceptibly
-// and would otherwise re-render the orb + mic-meter at the worklet's
-// ~50Hz cadence.
-const AUDIO_LEVEL_EPSILON = 0.01;
-
 export const useInterviewSessionStore = create<InterviewSessionState>((set) => ({
   connectionState: "idle",
   speaker: "silent",
   micMuted: false,
   transcriptVisible: loadInitialTranscriptVisible(),
   transcript: [],
-  reconnectAttempts: 0,
-  audioLevel: 0,
   setConnectionState: (connectionState) =>
     set((cur) => (cur.connectionState === connectionState ? cur : { connectionState })),
   setSpeaker: (speaker) =>
@@ -70,21 +58,11 @@ export const useInterviewSessionStore = create<InterviewSessionState>((set) => (
   },
   appendTranscript: (entries) =>
     set((s) => (entries.length === 0 ? s : { transcript: [...s.transcript, ...entries] })),
-  incrementReconnect: () =>
-    set((s) => ({ reconnectAttempts: s.reconnectAttempts + 1 })),
-  setAudioLevel: (n) => {
-    const clamped = Math.max(0, Math.min(1, n));
-    set((cur) =>
-      Math.abs(cur.audioLevel - clamped) < AUDIO_LEVEL_EPSILON ? cur : { audioLevel: clamped },
-    );
-  },
   reset: () =>
     set({
       connectionState: "idle",
       speaker: "silent",
       micMuted: false,
       transcript: [],
-      reconnectAttempts: 0,
-      audioLevel: 0,
     }),
 }));

@@ -2,7 +2,6 @@
 
 import { VoicePresence, type OrbState, type OrbTone } from "@repo/ui/composites/voice-presence";
 import { TranscriptFeed } from "@repo/ui/composites/transcript-feed";
-import { MicLevelMeter } from "@repo/ui/composites/mic-level-meter";
 import {
   ConnectionLossBanner,
   type ConnectionLossBannerState,
@@ -53,7 +52,6 @@ export function InterviewSessionContainer({
   const speaker = useInterviewSessionStore((s) => s.speaker);
   const transcript = useInterviewSessionStore((s) => s.transcript);
   const transcriptVisible = useInterviewSessionStore((s) => s.transcriptVisible);
-  const audioLevel = useInterviewSessionStore((s) => s.audioLevel);
   useInterviewSession({ interviewId: view.interviewId, token });
 
   const bannerState = deriveBanner(connectionState);
@@ -62,15 +60,12 @@ export function InterviewSessionContainer({
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center bg-background">
       {bannerState && <ConnectionLossBanner state={bannerState} />}
-      <VoicePresence state={orbState} tone={orbTone} audioLevel={audioLevel} />
+      <VoicePresence state={orbState} tone={orbTone} />
       {transcriptVisible && transcript.length > 0 && (
         <div className="mt-12 w-full">
           <TranscriptFeed entries={transcript} />
         </div>
       )}
-      <div className="absolute inset-x-0 bottom-2 px-6">
-        <MicLevelMeter level={audioLevel} />
-      </div>
     </main>
   );
 }
