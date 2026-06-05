@@ -144,6 +144,8 @@ describe("[Integration] StartCandidateSessionUseCase", () => {
       const output = result.unwrap();
       expect(output.signedUrl).toBe("https://signed.example/session");
       expect(output.overrides.agent.prompt.prompt).toBeTruthy();
+      expect(output.overrides.agent.firstMessage).toContain("Jane");
+      expect(output.overrides.agent.firstMessage).toContain("Senior Backend Engineer");
       expect(output.dynamicVariables.candidate_name).toBe("Jane Doe");
       expect(output.dynamicVariables.job_title).toBe("Senior Backend Engineer");
       expect(output.dynamicVariables.target_duration_minutes).toBe("15");

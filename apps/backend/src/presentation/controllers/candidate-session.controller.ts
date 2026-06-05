@@ -27,6 +27,7 @@ export interface StartCandidateSessionOutput {
   readonly overrides: {
     readonly agent: {
       readonly prompt: { readonly prompt: string };
+      readonly firstMessage: string;
     };
   };
   readonly dynamicVariables: Readonly<Record<string, string>>;

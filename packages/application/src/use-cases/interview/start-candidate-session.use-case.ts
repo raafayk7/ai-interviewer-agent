@@ -8,6 +8,7 @@ import {
 import { ServiceUnknownError, type ServiceError } from "../../core/service-error.js";
 import { UseCase } from "../../core/use-case.js";
 import type { IConversationalAgentService } from "../../ports/conversational-agent/index.js";
+import { assembleInterviewFirstMessage } from "./first-message-assembler.js";
 import { assembleInterviewSystemPrompt } from "./system-prompt-assembler.js";
 
 export interface StartCandidateSessionInput {
@@ -20,6 +21,7 @@ export interface StartCandidateSessionOutput {
   readonly overrides: {
     readonly agent: {
       readonly prompt: { readonly prompt: string };
+      readonly firstMessage: string;
     };
   };
   readonly dynamicVariables: Readonly<Record<string, string>>;
@@ -114,11 +116,17 @@ export class StartCandidateSessionUseCase extends UseCase<
       interviewPlan: plan,
     });
 
+    const firstMessage = assembleInterviewFirstMessage({
+      candidateInfo: next.candidateInfo,
+      jobDescription: next.jobDescription,
+    });
+
     return Result.Ok({
       signedUrl,
       overrides: {
         agent: {
           prompt: { prompt: systemPrompt },
+          firstMessage,
         },
       },
       dynamicVariables: {

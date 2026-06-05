@@ -22,6 +22,8 @@ export {
 export { EVALUATION_RUBRIC } from "./evaluation-rubric.js";
 export { assembleInterviewSystemPrompt } from "./system-prompt-assembler.js";
 export type { SystemPromptInput } from "./system-prompt-assembler.js";
+export { assembleInterviewFirstMessage } from "./first-message-assembler.js";
+export type { FirstMessageInput } from "./first-message-assembler.js";
 export {
   IssueCandidateLinkUseCase,
   type IssueCandidateLinkInput,
