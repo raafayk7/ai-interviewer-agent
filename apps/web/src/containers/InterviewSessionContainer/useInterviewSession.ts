@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { Conversation } from "@elevenlabs/client";
 import { toast } from "sonner";
 import { startCandidateSession } from "@/services/candidate.service";
@@ -51,21 +51,27 @@ export function useInterviewSession({
   const appendTranscript = useInterviewSessionStore((s) => s.appendTranscript);
   const resetStore = useInterviewSessionStore((s) => s.reset);
 
-  // The live SDK conversation handle. Typed off the SDK return type so cleanup
-  // can call endSession() without re-declaring the instance shape.
-  const conversationRef = useRef<Awaited<
-    ReturnType<typeof Conversation.startSession>
-  > | null>(null);
-  const unmountedRef = useRef(false);
-
   useEffect(() => {
-    unmountedRef.current = false;
+    // Cancellation is tracked by a closure-local flag — NOT a useRef — and the
+    // live conversation handle is a closure local too. This is the critical
+    // StrictMode-safety guarantee: in dev, React double-invokes effects
+    // (mount → cleanup → mount). A shared useRef would be reset to "not
+    // cancelled" by the second mount, so the FIRST invocation's in-flight
+    // startCandidateSession would resume past its guard and open a SECOND
+    // ElevenLabs conversation — two signed URLs, two audio streams talking over
+    // each other. A fresh `cancelled` per effect invocation cancels invocation
+    // #1 for good, so exactly one conversation is ever started.
+    let cancelled = false;
+    let conversation: Awaited<
+      ReturnType<typeof Conversation.startSession>
+    > | null = null;
+
     setConnectionState("connecting");
 
     void (async () => {
       // 1) Server-built per-session payload + single-use signed URL (ADR-033).
       const result = await startCandidateSession({ interviewId, token });
-      if (unmountedRef.current) return;
+      if (cancelled) return;
       if (!result.ok) {
         setConnectionState("error");
         toast.error(friendlyServiceError(result.error.kind));
@@ -80,30 +86,30 @@ export function useInterviewSession({
       //    WebSocket credential; the default WebRTC transport hits a LiveKit
       //    /rtc/v1 handshake bug and never connects (runbook 2026-05-29).
       try {
-        conversationRef.current = await Conversation.startSession({
+        const conv = await Conversation.startSession({
           ...result.value,
           connectionType: "websocket",
           onConnect: () => {
-            if (unmountedRef.current) return;
+            if (cancelled) return;
             setConnectionState("connected");
           },
           onModeChange: ({ mode }) => {
-            if (unmountedRef.current) return;
+            if (cancelled) return;
             setSpeaker(mode === "speaking" ? "ai" : "candidate");
           },
           onMessage: ({ message, role }) => {
-            if (unmountedRef.current) return;
+            if (cancelled) return;
             const entry = toTranscriptEntry(message, role);
             if (entry) appendTranscript([entry]);
           },
           onError: (message) => {
-            if (unmountedRef.current) return;
+            if (cancelled) return;
             setConnectionState("error");
             toast.error("The interview connection failed. Please try again.");
             console.error("[session] ElevenLabs onError", message);
           },
           onDisconnect: (details) => {
-            if (unmountedRef.current) return;
+            if (cancelled) return;
             // A delivered onDisconnect is terminal: the signed URL is single-use
             // and the SDK manages transient transport drops itself. reason
             // "error" = unexpected drop; "agent"/"user" = clean end.
@@ -112,8 +118,17 @@ export function useInterviewSession({
             );
           },
         });
+
+        // The effect may have been torn down WHILE startSession was resolving
+        // (StrictMode remount, or the candidate navigated away). End the
+        // freshly-created conversation immediately so it does not keep talking.
+        if (cancelled) {
+          void conv.endSession().catch(() => {});
+          return;
+        }
+        conversation = conv;
       } catch (cause) {
-        if (unmountedRef.current) return;
+        if (cancelled) return;
         setConnectionState("error");
         toast.error("We couldn't start your interview session. Please try again.");
         console.error("[session] startSession failed", cause);
@@ -121,9 +136,8 @@ export function useInterviewSession({
     })();
 
     return () => {
-      unmountedRef.current = true;
-      void conversationRef.current?.endSession().catch(() => {});
-      conversationRef.current = null;
+      cancelled = true;
+      void conversation?.endSession().catch(() => {});
       resetStore();
     };
   }, [interviewId, token, setConnectionState, setSpeaker, appendTranscript, resetStore]);

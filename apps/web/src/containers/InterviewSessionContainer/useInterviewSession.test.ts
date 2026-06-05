@@ -1,3 +1,4 @@
+import { StrictMode } from "react";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -225,5 +226,37 @@ describe("useInterviewSession — teardown", () => {
     unmount();
     await waitFor(() => expect(fakeConversation.endSession).toHaveBeenCalled());
     expect(getState().connectionState).toBe("idle");
+  });
+});
+
+describe("useInterviewSession — StrictMode double-mount safety", () => {
+  // Regression for the live-validation incident (2026-06-05): under React
+  // StrictMode (Next dev default), the effect is double-invoked
+  // (mount → cleanup → mount). The old shared-useRef guard let BOTH invocations
+  // reach Conversation.startSession, opening two ElevenLabs conversations at the
+  // same instant — double audio + double signed-URL submission. The cancellation
+  // guard must be a closure-local flag so the first invocation is cancelled for
+  // good. The service POST still fires twice (unavoidable in StrictMode dev), but
+  // only ONE conversation may ever be started.
+  it("starts exactly one conversation despite the effect being invoked twice", async () => {
+    renderHook(
+      () => useInterviewSession({ interviewId: INTERVIEW_ID, token: TOKEN }),
+      { wrapper: StrictMode },
+    );
+
+    // StrictMode double-invokes the effect → the POST fires twice.
+    await waitFor(() =>
+      expect(vi.mocked(startCandidateSession)).toHaveBeenCalledTimes(2),
+    );
+    await waitFor(() =>
+      expect(vi.mocked(Conversation.startSession)).toHaveBeenCalled(),
+    );
+
+    // Let any stray second invocation settle, then assert it never opened a
+    // second conversation.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(vi.mocked(Conversation.startSession)).toHaveBeenCalledTimes(1);
   });
 });
