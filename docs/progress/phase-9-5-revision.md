@@ -149,3 +149,43 @@ A full browser voice conversation through the live agent confirmed:
 `ELEVENLABS_AGENT_ID`, `ELEVENLABS_WEBHOOK_SECRET`, `ELEVENLABS_TOOL_WEBHOOK_SECRET`, `CANDIDATE_LINK_TTL_SECONDS`.
 
 Re-setup guide: `docs/runbooks/elevenlabs-live-validation.md`.
+
+---
+
+## 2026-06-04 → 2026-06-12 — Frontend migration to the ElevenLabs browser SDK + live-validation tuning
+
+This completes the candidate voice experience. The frontend was migrated off the bespoke "sandwich" pipeline (raw-PCM-over-WS up, streamed-MP3 down, AudioWorklet downsampler, MediaSource playback queue, custom half-duplex turn-taking and exponential-backoff reconnect) onto `@elevenlabs/client` (v1.9.0), which now owns the microphone, audio playback, and turn-taking. Five real browser interviews against the live agent then surfaced a set of tuning fixes. Governing ADRs unchanged: ADR-029, ADR-033, ADR-034. Plan: `.claude/plan/phase-9-5-frontend.md`.
+
+### Frontend migration (`apps/web`) — fanned out across disjoint work units A–F
+- **Types + service:** `types/candidate-session.types.ts` — `CandidateSessionSchema` validates only `signedUrl` + `overrides.agent.prompt.prompt` via `z.looseObject` (passthrough), so the server personalization block survives `safeParse` without the browser ever naming it (ADR-033 forbid-pattern on `apps/web/src/**/*.ts`). `services/candidate.service.ts` adds `startCandidateSession` (POST, token-in-URL auth, `Result<CandidateSession, ServiceError>`).
+- **Store:** `useInterviewSessionStore` dropped `audioLevel`/`setAudioLevel` and `reconnectAttempts`/`incrementReconnect` (the SDK owns the mic + reconnect); `ConnectionState`/`SpeakerState`/`TranscriptEntry` unchanged.
+- **Hook (full rewrite):** `useInterviewSession.ts` — one `startCandidateSession` call, one `Conversation.startSession({ ...payload, connectionType: "websocket", …callbacks })` (websocket is required; the signed URL is a WS credential). SDK callbacks map onto the store: `onConnect`→connected, `onModeChange`→speaker, `onMessage({ role })`→transcript, `onDisconnect({ reason })`→completed/interrupted, `onError`→error + toast. Effect-driven (no `useQuery`/`useMutation`); the payload is spread, never named.
+- **Container:** `InterviewSessionContainer.tsx` dropped `MicLevelMeter` + the `audioLevel` prop (the composite stays — still used by `PreInterviewCheckContainer`).
+- **Deletions:** `audio-playback-queue.ts` (+ test), `public/audio-worklet/pcm-downsampler.js`, and the `NEXT_PUBLIC_WS_URL` env var — all dead under the SDK.
+- **Package:** added `@elevenlabs/client@^1.9.0` (resolved 1.9.0); `livekit-client` intentionally omitted (`connectionType: "websocket"` bypasses the WebRTC transport that hits the LiveKit `/rtc/v1` handshake bug).
+
+### Live-validation tuning (found in real browser runs, not tests)
+- **StrictMode double-session — `fix(web) f9343f1`.** Next dev's React StrictMode double-invokes the start effect (mount→cleanup→mount); the cancellation guard was a `useRef`, which the second mount reset to `false`, so both in-flight `startCandidateSession` promises reached `Conversation.startSession` — two signed URLs, two audio streams talking over each other (observed: two `conv_…` ids at the same second, both `failed`). Fix: cancellation is now an effect-local closure flag (not a ref) plus an orphan-guard that ends a conversation created after teardown. Regression test mounts under `<StrictMode>` and asserts the POST fires twice but `startSession` runs exactly once.
+- **Personalized first message — `feat(backend) 6ae6d89`.** The agent opened with its static placeholder because `StartCandidateSession` built only the system-prompt override. Added `assembleInterviewFirstMessage` (mirrors `assembleInterviewSystemPrompt`) — a server-built greeting from the candidate first name + role/company — emitted as `overrides.agent.firstMessage`. The agent's allow-list already permits `firstMessage`; the browser forwards it verbatim; interview content stays assembled in `StartCandidateSession` (ADR-033 preserved).
+- **Premature 10-min cutoff — `fix 5036bea`.** Interviews were guillotined mid-answer at ~601s (`termination: "Conversation has exceeded maximum duration"`). The ElevenLabs agent's `conversation.maxDurationSeconds` sat at the platform default (600s), below the plan's 25-min max. Raised to 1800s on the live agent via the API and in `provision-agent.mjs`; the agent still self-ends via `end_interview` near the per-interview ceiling, so the platform cap is only a runaway backstop.
+- **Duplicate agent question — `fix 5036bea`.** The agent asked each question twice (a full ask, then a restated paraphrase): it spoke the question, called the silent `next_question` tool (which returns only `{ ok: true }` — confirmed not the cause), then restated. Tightened the system prompt — ask each question exactly once, call tools silently, never restate after a tool call — and corrected the `next_question` description (it takes no agent-supplied args; `interview_id` is injected).
+- **Agent LLM swap — `chore f7c48da`.** A live run hit ElevenLabs' `"All LLMs have failed"` (provider-side, invisible to our Langfuse — the agent's Gemini calls run inside ElevenLabs, not through our backend). Switched the agent from `gemini-2.5-flash` to `gpt-4o-mini` — cost-effective, low-latency, reliable tool-calling, and a different provider de-risks recurrence. Applied to the live agent via the API and baked into `provision-agent.mjs`. The model is a runtime config knob, not an architectural commitment, so no ADR (ADR-029 already governs the ElevenLabs adoption).
+
+### Verification
+```bash
+pnpm turbo run check-types --filter=web --filter=@repo/ui   # clean
+pnpm turbo run lint --filter=web --filter=@repo/ui          # clean (--max-warnings 0)
+pnpm turbo run test --filter=web                            # 267 passed (17 files)
+pnpm turbo run test --filter=@repo/application              # first-message-assembler (3), start-candidate-session (14, incl. firstMessage), system-prompt-assembler (3)
+```
+- web tests: **267 passed** — includes the `<StrictMode>` regression and the `startCandidateSession` service suite.
+- `frontend-code-reviewer`: **PASS** on the migration (layer boundaries, state boundaries, ADR-033, dead-code removal, test completeness).
+- Pre-existing unrelated failure noted, not from this work: `create-interview.dto.test.ts` ("uploadedAt is not a Date") fails on the clean tree too.
+
+### Live-validation gate — PASS (full interview on `gpt-4o-mini`)
+A real browser interview ran end to end: personalized greeting, multi-turn conversation, `next_question`/`score_answer`/`take_note` firing through the tunnel, post-call transcript persisted, interview COMPLETED — no double-talk, no premature cutoff.
+
+### Operational notes / known gaps
+- **Backend resolves `packages/*` from `dist/`** (`@repo/application` `exports.default → dist`; no tsconfig `paths`→src). Editing `@repo/application`/`@repo/domain` needs a package rebuild + backend restart; `tsx watch` ignores `node_modules`, so a `dist` rebuild alone won't reload it. Frontend (`apps/web` + `@repo/ui`) and `apps/backend/src` hot-reload from source.
+- **Stale `dist` artifacts** linger after source deletion (`tsc` doesn't clean `dist` — e.g. `assemble-conversation-initiation-context.use-case.js` from the pre-ADR-033 path); harmless, nothing imports them.
+- Agent `maxDurationSeconds` and `llm` are ElevenLabs-side config knobs — changeable anytime via the API with no redeploy.
