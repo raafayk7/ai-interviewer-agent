@@ -117,7 +117,11 @@ async function main() {
         prompt: {
           // Real instructions are injected via Conversation.startSession({ overrides })
           prompt: "You are a placeholder. Your real instructions will be injected by the browser via Conversation.startSession overrides.",
-          llm: "gemini-2.5-flash",
+          // gpt-4o-mini: cost-effective, low-latency, reliable tool-calling for
+          // the 4-tool interview surface. Switched off gemini-2.5-flash after a
+          // live "All LLMs have failed" (provider-side); a different provider
+          // de-risks recurrence. See ElevenLabs supported-LLMs list.
+          llm: "gpt-4o-mini",
           toolIds: [tools.next_question, tools.score_answer, tools.take_note],
           builtInTools: {
             endCall: {
