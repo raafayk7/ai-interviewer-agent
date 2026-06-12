@@ -134,6 +134,11 @@ async function main() {
         voiceId: "EXAVITQu4vr4xnSDxMaL",
         modelId: "eleven_turbo_v2",
       },
+      // Hard backstop above the interview plan's max duration (~25min). The
+      // agent self-ends via end_interview near the per-interview ceiling; this
+      // only catches a runaway. ElevenLabs defaults to 600s (10min), which
+      // guillotines longer screens mid-answer — raise it generously.
+      conversation: { maxDurationSeconds: 1800 },
     },
     platformSettings: {
       overrides: {
