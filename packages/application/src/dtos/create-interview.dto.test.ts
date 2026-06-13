@@ -80,9 +80,21 @@ describe("CreateInterviewInputDto", () => {
       expect(result.unwrapErr()).toBeInstanceOf(DtoValidationError);
     });
 
-    it("returns Err when jdFileRef.uploadedAt is not a Date", () => {
+    it("coerces jdFileRef.uploadedAt from an ISO date string", () => {
+      // uploadedAt is z.coerce.date() (like scheduledAt) — dates arrive over the
+      // wire as JSON strings, so a valid ISO string is coerced, not rejected.
       const input = validInput();
       (input.jdFileRef as { uploadedAt: unknown }).uploadedAt = "2025-01-01";
+      const result = CreateInterviewInputDto.parse(input);
+      expect(result.isOk()).toBe(true);
+      expect(result.unwrap().value.jdFileRef.uploadedAt).toEqual(
+        new Date("2025-01-01T00:00:00.000Z"),
+      );
+    });
+
+    it("returns Err when jdFileRef.uploadedAt is not a valid date", () => {
+      const input = validInput();
+      (input.jdFileRef as { uploadedAt: unknown }).uploadedAt = "not-a-real-date";
       const result = CreateInterviewInputDto.parse(input);
       expect(result.isErr()).toBe(true);
       expect(result.unwrapErr()).toBeInstanceOf(DtoValidationError);
