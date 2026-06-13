@@ -4,6 +4,11 @@ import multipart from "@fastify/multipart";
 import websocket from "@fastify/websocket";
 import { corsEnvFrom } from "./infrastructure/cors/cors-env.js";
 import {
+  installRateLimit,
+  rateLimitsFromEnv,
+  trustProxyFromEnv,
+} from "./presentation/rate-limit/rate-limit.js";
+import {
   installAuthPlugin,
   type AuthPluginOptions,
 } from "./presentation/auth/auth-plugin.js";
@@ -58,6 +63,7 @@ export interface BuildAppOptions {
 export async function buildApp(options: BuildAppOptions = {}) {
   const app = Fastify({
     logger: true,
+    trustProxy: trustProxyFromEnv(),
   });
 
   installErrorHandler(app, app.log);
@@ -80,6 +86,12 @@ export async function buildApp(options: BuildAppOptions = {}) {
     limits: { fileSize: 25 * 1024 * 1024, files: 2 },
   });
 
+  // Opt-in per-route rate limiting (ADR-037). Registered before routes so their
+  // `config.rateLimit` is honored; `global: false` means nothing is throttled
+  // unless it opts in.
+  await installRateLimit(app);
+  const rateLimits = rateLimitsFromEnv();
+
   const composeDefaults =
     !options.authDeps &&
     !options.interviewSession &&
@@ -97,7 +109,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
 
   if (authDeps) {
     await installAuthPlugin(app, { auth: authDeps.auth });
-    await mountBetterAuth(app, authDeps.auth);
+    await mountBetterAuth(app, authDeps.auth, rateLimits.auth);
   }
 
   app.get("/health", async () => {
@@ -166,6 +178,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   if (candidateSession) {
     await app.register(registerCandidateSessionRoutes, {
       prefix: "",
+      rateLimit: rateLimits.candidateSession,
       ...candidateSession,
     });
   }

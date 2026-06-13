@@ -21,7 +21,7 @@ An ADR captures the context and reasoning behind a design choice that constrains
 | [Data & Storage](#data--storage) | 2 |
 | [Observability](#observability) | 6 |
 | [Domain & Application Design](#domain--application-design) | 4 |
-| [Authentication & Security](#authentication--security) | 3 |
+| [Authentication & Security](#authentication--security) | 4 |
 | [Presentation](#presentation) | 1 |
 | [Frontend](#frontend) | 8 |
 
@@ -86,6 +86,7 @@ An ADR captures the context and reasoning behind a design choice that constrains
 | [ADR-016](ADR-016-adopt-better-auth-for-recruiter-authentication.md) | Adopt better-auth for Recruiter Authentication | Accepted | 2026-05-15 |
 | [ADR-017](ADR-017-candidate-access-via-hmac-signed-link.md) | Candidate Access via HMAC-Signed Link | Accepted | 2026-05-15 |
 | [ADR-019](ADR-019-ownership-checks-in-presentation-not-application.md) | Recruiter Ownership Checks Live in the Presentation Layer, Not the Application or Domain Layer | Accepted | 2026-05-15 |
+| [ADR-037](ADR-037-rate-limiting-public-http-surfaces-via-fastify-rate-limit.md) | Rate Limiting Public HTTP Surfaces via @fastify/rate-limit | Proposed | 2026-06-14 |
 
 ### Presentation
 
