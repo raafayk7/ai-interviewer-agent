@@ -24,6 +24,9 @@ coverage
 # Vercel
 .vercel
 
+# Claude Code ephemeral worktrees
+.claude/worktrees/
+
 # Build Outputs
 .next/
 out/

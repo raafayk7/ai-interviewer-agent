@@ -1,0 +1,86 @@
+name: ai-interviewer-agent
+
+# Project-wide local infrastructure — the single home for all containerized
+# services. Run against the desktop-linux docker context (the default context
+# shows nothing on this machine):
+#
+#   Dev infra (MinIO object storage):
+#     docker --context desktop-linux compose --profile dev up -d
+#   Test infra (ephemeral Postgres for integration tests, :54329):
+#     docker --context desktop-linux compose --profile test up -d
+#   Everything:
+#     docker --context desktop-linux compose --profile dev --profile test up -d
+#   Tear down (volumes kept):
+#     docker --context desktop-linux compose --profile dev --profile test down
+#
+# Profiles keep concerns separate; future frontend/backend/live-db services slot
+# in here under their own profiles (see the note at the bottom).
+
+services:
+  # ── Object storage (S3-compatible) — profile: dev ─────────────────────────
+  # MinIO so local dev exercises the SAME S3 file-storage adapter as staging
+  # (Supabase Storage), instead of the disk-based LocalFileStorageService.
+  # Activate by setting FILE_STORAGE_DRIVER=s3 in apps/backend/.env.
+  minio:
+    profiles: ["dev"]
+    image: minio/minio:latest
+    container_name: ai_interviewer_minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000" # S3 API  → S3_ENDPOINT=http://localhost:9000
+      - "9001:9001" # Console → http://localhost:9001 (minioadmin / minioadmin)
+    volumes:
+      - minio-data:/data # persistent: uploaded CVs/JDs survive restarts
+
+  # One-shot: wait for MinIO, then create the bucket. Idempotent — safe to re-run.
+  minio-createbucket:
+    profiles: ["dev"]
+    image: minio/mc:latest
+    container_name: ai_interviewer_minio_init
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 minioadmin minioadmin; do
+        echo 'waiting for minio...'; sleep 1;
+      done;
+      mc mb --ignore-existing local/interview-documents;
+      mc anonymous set none local/interview-documents;
+      echo 'bucket interview-documents ready';
+      exit 0;
+      "
+
+  # ── Test database (ephemeral) — profile: test ─────────────────────────────
+  # Disposable Postgres for Drizzle repository integration tests. tmpfs data →
+  # wiped on restart; the test harness re-migrates. Connection (test-db.ts):
+  #   postgres://test:test@localhost:54329/ai_interviewer_test
+  postgres-test:
+    profiles: ["test"]
+    image: postgres:16-alpine
+    container_name: ai_interviewer_test_pg
+    environment:
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: ai_interviewer_test
+    ports:
+      - "54329:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test -d ai_interviewer_test"]
+      interval: 1s
+      timeout: 1s
+      retries: 30
+
+  # ── Future (project-wide vision) ──────────────────────────────────────────
+  # As the app gets dockerized, these slot in here under their own profiles:
+  #   postgres (profile: db)   — local live dev Postgres, persistent volume
+  #   backend  (profile: app)  — Fastify API, built from apps/backend
+  #   web      (profile: app)  — Next.js frontend, built from apps/web
+  # Left as a note (not half-written stubs) so nothing unverified ships.
+
+volumes:
+  minio-data:
