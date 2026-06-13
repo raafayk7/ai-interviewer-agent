@@ -1,5 +1,5 @@
 import * as React from "react";
-import { describe, it, expect } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { TranscriptFeed } from "./transcript-feed.js";
 import type { TranscriptFeedEntry } from "./transcript-feed.js";
@@ -17,6 +17,33 @@ const baseEntry = (
   ...overrides,
 });
 
+let originalScrollIntoView: typeof Element.prototype.scrollIntoView | undefined;
+let scrollIntoViewMock: ReturnType<typeof vi.fn>;
+
+beforeEach(() => {
+  originalScrollIntoView = Element.prototype.scrollIntoView;
+  scrollIntoViewMock = vi.fn();
+
+  Object.defineProperty(Element.prototype, "scrollIntoView", {
+    configurable: true,
+    writable: true,
+    value: scrollIntoViewMock,
+  });
+});
+
+afterEach(() => {
+  if (originalScrollIntoView) {
+    Object.defineProperty(Element.prototype, "scrollIntoView", {
+      configurable: true,
+      writable: true,
+      value: originalScrollIntoView,
+    });
+    return;
+  }
+
+  Reflect.deleteProperty(Element.prototype, "scrollIntoView");
+});
+
 // ---------------------------------------------------------------------------
 // TranscriptFeed — ARIA structure
 // ---------------------------------------------------------------------------
@@ -26,6 +53,45 @@ describe("TranscriptFeed — ARIA structure", () => {
     render(<TranscriptFeed entries={[baseEntry()]} />);
     const list = screen.getByRole("list");
     expect(list).toHaveAttribute("aria-live", "polite");
+  });
+
+  it("passes className through to the ordered list", () => {
+    render(<TranscriptFeed entries={[]} className="max-h-40 overflow-y-auto" />);
+    const list = screen.getByRole("list");
+    expect(list).toHaveClass("max-h-40");
+    expect(list).toHaveClass("overflow-y-auto");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// TranscriptFeed — autoscroll
+// ---------------------------------------------------------------------------
+
+describe("TranscriptFeed — autoscroll", () => {
+  it("scrolls the latest list item into view when a new entry is added", () => {
+    const initialEntries: TranscriptFeedEntry[] = [
+      baseEntry({ text: "First question." }),
+    ];
+    const nextEntries: TranscriptFeedEntry[] = [
+      ...initialEntries,
+      baseEntry({
+        speaker: "candidate",
+        text: "My answer.",
+        timestamp: new Date("2026-05-01T00:00:10.000Z"),
+      }),
+    ];
+    const { rerender } = render(<TranscriptFeed entries={initialEntries} />);
+
+    scrollIntoViewMock.mockClear();
+    rerender(<TranscriptFeed entries={nextEntries} />);
+
+    const lastItem = screen.getAllByRole("listitem").at(-1);
+    expect(scrollIntoViewMock).toHaveBeenCalledTimes(1);
+    expect(scrollIntoViewMock).toHaveBeenCalledWith({
+      block: "end",
+      behavior: "smooth",
+    });
+    expect(scrollIntoViewMock.mock.contexts[0]).toBe(lastItem);
   });
 });
 

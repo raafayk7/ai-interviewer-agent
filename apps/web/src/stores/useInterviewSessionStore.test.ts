@@ -72,6 +72,11 @@ describe("useInterviewSessionStore — setConnectionState", () => {
     expect(useInterviewSessionStore.getState().connectionState).toBe("error");
   });
 
+  it("transitions to 'blocked'", () => {
+    useInterviewSessionStore.getState().setConnectionState("blocked");
+    expect(useInterviewSessionStore.getState().connectionState).toBe("blocked");
+  });
+
   it("transitions back to 'idle'", () => {
     useInterviewSessionStore.getState().setConnectionState("connected");
     useInterviewSessionStore.getState().setConnectionState("idle");

@@ -7,7 +7,8 @@ export type ConnectionState =
   | "reconnecting"
   | "completed"
   | "interrupted"
-  | "error";
+  | "error"
+  | "blocked";
 
 export type SpeakerState = "candidate" | "ai" | "silent";
 

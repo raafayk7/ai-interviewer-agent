@@ -33,7 +33,8 @@ function smartTime(interview: Interview): string {
   if (
     status === "EVALUATED" ||
     status === "COMPLETED" ||
-    status === "CANCELLED"
+    status === "CANCELLED" ||
+    status === "FAILED"
   )
     return ago(updatedAt);
   if (status === "SCHEDULED" || status === "CREATED") {

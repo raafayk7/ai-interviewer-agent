@@ -252,7 +252,9 @@ The orb's `transform: scale()` is driven by the **live TTS audio envelope** — 
 2. **2–10s:** the orb's halo color crossfades to `--attention-warning` (muted amber, `400ms`). A top banner slides down `220ms` reading **"Reconnecting…"** in `body` weight 500, with a 2px progress nub that travels left-to-right on a 1.5s loop. Sub-copy in `small` `--muted-foreground`: *"Your interview is paused. Please stay on this page."* The candidate audio indicator fades to 0 over `400ms`.
 3. **Reconnect succeeds:** banner copy crossfades to **"Reconnected. Resuming…"** for 2.5s, then the banner slides back up `160ms`. Orb halo crossfades back to `--orb-core` over `600ms`. **No checkmark, no toast, no "✓ You're back!"** — recovery is deliberately undramatic.
 
-If reconnect fails after 60s, the banner becomes static, copy changes to *"We can't reach Sift right now. Your progress is saved — try refreshing in a moment."*, and the orb settles into a static low-glow until the page is refreshed. Even at the failure case, `--attention-warning` — never `--destructive`, never `--negative`.
+If the session ends in failure, the banner becomes static, copy reads *"Your interview connection ended. Your responses so far are saved — you can close this tab."*, and the orb settles into a static low-glow. Even at the failure case, `--attention-warning` — never `--destructive`, never `--negative`.
+
+**(ADR-035 amendment, 2026-06-13.)** The original v2 failure copy invited a refresh ("…try refreshing in a moment") — written for the sandwich-era custom reconnect, where a refresh could re-establish the session. Under the ElevenLabs SDK (ADR-029) + ADR-035, a page refresh cannot resume an in-progress conversation: a new conversation is an amnesiac agent, and the bound session returns 409. The failure state is therefore terminal from the candidate's side — the copy no longer promises recovery; the backend reconciliation sweep (ADR-035) recovers whatever transcript exists server-side. Resume-on-refresh is deferred to a future version, pending whether ElevenLabs supports rejoining a conversation by id. The 0–10s SDK-level reconnect choreography above is unchanged.
 
 ---
 

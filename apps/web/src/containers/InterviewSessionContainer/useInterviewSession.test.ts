@@ -73,7 +73,7 @@ function capturedOptions(): CapturedOptions {
 
 function mount() {
   return renderHook(() =>
-    useInterviewSession({ interviewId: INTERVIEW_ID, token: TOKEN }),
+    useInterviewSession({ interviewId: INTERVIEW_ID, token: TOKEN, enabled: true }),
   );
 }
 
@@ -210,6 +210,39 @@ describe("useInterviewSession — failure paths", () => {
     expect(vi.mocked(Conversation.startSession)).not.toHaveBeenCalled();
   });
 
+  it("already-active 409 -> connectionState 'blocked', no toast, and does NOT call startSession", async () => {
+    vi.mocked(startCandidateSession).mockResolvedValue({
+      ok: false,
+      error: {
+        kind: "SERVER",
+        status: 409,
+        code: "SESSION_ALREADY_ACTIVE",
+        message: "Session already active",
+      },
+    });
+    mount();
+    await waitFor(() => expect(getState().connectionState).toBe("blocked"));
+    expect(vi.mocked(toast.error)).not.toHaveBeenCalled();
+    expect(vi.mocked(Conversation.startSession)).not.toHaveBeenCalled();
+  });
+
+  it("enabled false -> does not start a candidate session", async () => {
+    renderHook(() =>
+      useInterviewSession({
+        interviewId: INTERVIEW_ID,
+        token: TOKEN,
+        enabled: false,
+      }),
+    );
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(getState().connectionState).toBe("idle");
+    expect(vi.mocked(startCandidateSession)).not.toHaveBeenCalled();
+    expect(vi.mocked(Conversation.startSession)).not.toHaveBeenCalled();
+  });
+
   it("startSession throwing -> connectionState 'error' and a toast", async () => {
     vi.mocked(Conversation.startSession).mockRejectedValue(new Error("boom"));
     mount();
@@ -240,7 +273,12 @@ describe("useInterviewSession — StrictMode double-mount safety", () => {
   // only ONE conversation may ever be started.
   it("starts exactly one conversation despite the effect being invoked twice", async () => {
     renderHook(
-      () => useInterviewSession({ interviewId: INTERVIEW_ID, token: TOKEN }),
+      () =>
+        useInterviewSession({
+          interviewId: INTERVIEW_ID,
+          token: TOKEN,
+          enabled: true,
+        }),
       { wrapper: StrictMode },
     );
 

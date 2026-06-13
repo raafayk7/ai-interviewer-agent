@@ -15,7 +15,8 @@ export interface ConnectionLossBannerProps {
 // DESIGN.md §7 connection-loss choreography:
 //   reconnecting   → "Reconnecting…"            + 1.5s progress shimmer
 //   reconnected    → "Reconnected. Resuming…"   (2.5s, then unmount)
-//   failed         → static "We can't reach Sift right now." (no destructive tint)
+//   failed         → static terminal end (ADR-035: a refresh no longer resumes,
+//                     so no "try refreshing" hint); amber, no destructive tint
 const COPY: Record<
   ConnectionLossBannerState,
   { title: string; sub: string }
@@ -29,8 +30,8 @@ const COPY: Record<
     sub: "Picking up where we left off.",
   },
   failed: {
-    title: "We can't reach Sift right now.",
-    sub: "Your progress is saved — try refreshing in a moment.",
+    title: "Your interview connection ended.",
+    sub: "Your responses so far are saved — you can close this tab.",
   },
 };
 

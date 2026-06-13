@@ -93,6 +93,18 @@ describe("useCandidateLanding — status CANCELLED", () => {
   });
 });
 
+describe("useCandidateLanding — status FAILED", () => {
+  it("sets ctaEnabled to false", () => {
+    const { result } = renderHook(() => useCandidateLanding(baseView({ status: "FAILED" })));
+    expect(result.current.ctaEnabled).toBe(false);
+  });
+
+  it("sets blockedReason explaining the interview didn't complete", () => {
+    const { result } = renderHook(() => useCandidateLanding(baseView({ status: "FAILED" })));
+    expect(result.current.blockedReason).toMatch(/didn't complete/i);
+  });
+});
+
 describe("useCandidateLanding — status CREATED", () => {
   it("sets ctaEnabled to false", () => {
     const { result } = renderHook(() => useCandidateLanding(baseView({ status: "CREATED" })));

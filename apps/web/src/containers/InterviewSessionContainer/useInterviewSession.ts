@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { Conversation } from "@elevenlabs/client";
 import { toast } from "sonner";
+import type { ServiceError } from "@/services/errors";
 import { startCandidateSession } from "@/services/candidate.service";
 import {
   useInterviewSessionStore,
@@ -12,6 +13,7 @@ import {
 interface UseInterviewSessionArgs {
   interviewId: string;
   token: string;
+  enabled: boolean;
 }
 
 // Map an SDK message turn onto a transcript entry. `role` is the
@@ -42,9 +44,14 @@ function friendlyServiceError(kind: string): string {
   }
 }
 
+function isAlreadyActiveConflict(error: ServiceError): boolean {
+  return error.kind === "SERVER" && error.status === 409;
+}
+
 export function useInterviewSession({
   interviewId,
   token,
+  enabled,
 }: UseInterviewSessionArgs): void {
   const setConnectionState = useInterviewSessionStore((s) => s.setConnectionState);
   const setSpeaker = useInterviewSessionStore((s) => s.setSpeaker);
@@ -52,6 +59,8 @@ export function useInterviewSession({
   const resetStore = useInterviewSessionStore((s) => s.reset);
 
   useEffect(() => {
+    if (!enabled) return;
+
     // Cancellation is tracked by a closure-local flag — NOT a useRef — and the
     // live conversation handle is a closure local too. This is the critical
     // StrictMode-safety guarantee: in dev, React double-invokes effects
@@ -73,6 +82,10 @@ export function useInterviewSession({
       const result = await startCandidateSession({ interviewId, token });
       if (cancelled) return;
       if (!result.ok) {
+        if (isAlreadyActiveConflict(result.error)) {
+          setConnectionState("blocked");
+          return;
+        }
         setConnectionState("error");
         toast.error(friendlyServiceError(result.error.kind));
         return;
@@ -140,5 +153,13 @@ export function useInterviewSession({
       void conversation?.endSession().catch(() => {});
       resetStore();
     };
-  }, [interviewId, token, setConnectionState, setSpeaker, appendTranscript, resetStore]);
+  }, [
+    interviewId,
+    token,
+    enabled,
+    setConnectionState,
+    setSpeaker,
+    appendTranscript,
+    resetStore,
+  ]);
 }

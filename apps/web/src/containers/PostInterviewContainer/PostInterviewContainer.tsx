@@ -18,19 +18,26 @@ export function PostInterviewContainer({
   token: string;
 }) {
   const { view: cur, isTerminal } = usePostInterview({ initial: view, token });
+  const failed = cur?.status === "FAILED";
   return (
     <CandidatePageShell>
       <Card>
         <CardHeader>
           <CardTitle as="h1">
-            {isTerminal ? "Thanks, you're done." : "Wrapping up…"}
+            {failed
+              ? "We couldn't complete your interview."
+              : isTerminal
+                ? "Thanks, you're done."
+                : "Wrapping up…"}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground">
-            {isTerminal
-              ? "Your recruiter will be in touch. You can safely close this tab."
-              : "We're saving your session — this only takes a moment."}
+            {failed
+              ? "Something interrupted the session and it couldn't be completed. Your recruiter will be in touch."
+              : isTerminal
+                ? "Your recruiter will be in touch. You can safely close this tab."
+                : "We're saving your session — this only takes a moment."}
           </p>
           {cur && (
             <p className="mt-3 text-sm text-muted-foreground">

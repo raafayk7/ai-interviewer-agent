@@ -119,6 +119,13 @@ export function InterviewDetailContainer({ interviewId }: Props) {
       {status === "CANCELLED" && (
         <p className="text-sm text-muted-foreground">This interview was cancelled.</p>
       )}
+
+      {status === "FAILED" && (
+        <p className="text-sm text-muted-foreground">
+          This interview did not complete. The candidate session is no longer
+          available.
+        </p>
+      )}
     </div>
   );
 }

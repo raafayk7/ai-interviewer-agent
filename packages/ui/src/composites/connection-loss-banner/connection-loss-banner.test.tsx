@@ -59,9 +59,15 @@ describe("ConnectionLossBanner — copy for reconnected-resuming state", () => {
 });
 
 describe("ConnectionLossBanner — copy for failed state", () => {
-  it('renders "We can\'t reach Sift right now." as the title when state is failed', () => {
+  it('renders "Your interview connection ended." as the title when state is failed', () => {
     render(<ConnectionLossBanner state="failed" />);
-    expect(screen.getByText("We can't reach Sift right now.")).toBeInTheDocument();
+    expect(screen.getByText("Your interview connection ended.")).toBeInTheDocument();
+  });
+
+  it("does not invite a refresh (ADR-035: a refresh no longer resumes the session)", () => {
+    render(<ConnectionLossBanner state="failed" />);
+    expect(screen.queryByText(/refresh/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/you can close this tab/i)).toBeInTheDocument();
   });
 });
 

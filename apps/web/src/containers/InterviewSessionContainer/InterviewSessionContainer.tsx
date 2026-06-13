@@ -7,11 +7,15 @@ import {
   type ConnectionLossBannerState,
 } from "@repo/ui/composites/connection-loss-banner";
 import {
+  SessionEndModal,
+  type SessionEndVariant,
+} from "@/components/SessionEndModal";
+import {
   useInterviewSessionStore,
   type ConnectionState,
   type SpeakerState,
 } from "@/stores/useInterviewSessionStore";
-import type { CandidateInterviewView } from "@/types";
+import { isTerminalStatus, type CandidateInterviewView } from "@/types";
 import { useInterviewSession } from "./useInterviewSession";
 
 function speakerToOrbState(speaker: SpeakerState): OrbState {
@@ -24,7 +28,10 @@ function deriveOrb(
   connectionState: ConnectionState,
   speaker: SpeakerState,
 ): { state: OrbState; tone: OrbTone } {
-  if (connectionState === "completed" || connectionState === "interrupted") {
+  if (connectionState === "interrupted") {
+    return { state: "idle", tone: "warning" };
+  }
+  if (connectionState === "completed" || connectionState === "blocked") {
     return { state: "idle", tone: "default" };
   }
   if (connectionState === "reconnecting") {
@@ -41,6 +48,15 @@ function deriveBanner(
   return null;
 }
 
+function deriveEndModal(
+  terminal: boolean,
+  connectionState: ConnectionState,
+): SessionEndVariant | null {
+  if (terminal || connectionState === "blocked") return "blocked";
+  if (connectionState === "completed") return "completed";
+  return null;
+}
+
 export function InterviewSessionContainer({
   view,
   token,
@@ -52,20 +68,29 @@ export function InterviewSessionContainer({
   const speaker = useInterviewSessionStore((s) => s.speaker);
   const transcript = useInterviewSessionStore((s) => s.transcript);
   const transcriptVisible = useInterviewSessionStore((s) => s.transcriptVisible);
-  useInterviewSession({ interviewId: view.interviewId, token });
+  const terminal = isTerminalStatus(view.status);
+
+  useInterviewSession({ interviewId: view.interviewId, token, enabled: !terminal });
 
   const bannerState = deriveBanner(connectionState);
   const { state: orbState, tone: orbTone } = deriveOrb(connectionState, speaker);
+  const endVariant = deriveEndModal(terminal, connectionState);
 
   return (
-    <main className="relative flex min-h-screen flex-col items-center justify-center bg-background">
+    <main className="relative flex h-dvh flex-col bg-background">
       {bannerState && <ConnectionLossBanner state={bannerState} />}
-      <VoicePresence state={orbState} tone={orbTone} />
+
+      <section className="flex shrink-0 items-center justify-center px-4 pt-16 pb-8">
+        <VoicePresence state={orbState} tone={orbTone} />
+      </section>
+
       {transcriptVisible && transcript.length > 0 && (
-        <div className="mt-12 w-full">
+        <section className="min-h-0 flex-1 overflow-y-auto px-4 pb-12">
           <TranscriptFeed entries={transcript} />
-        </div>
+        </section>
       )}
+
+      {endVariant && <SessionEndModal variant={endVariant} />}
     </main>
   );
 }

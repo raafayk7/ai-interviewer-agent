@@ -18,6 +18,7 @@ const BLOCKED_COPY: Partial<Record<InterviewStatus, string>> = {
   EVALUATED: "This interview has already been completed.",
   IN_PROGRESS: "This interview is already in progress.",
   CANCELLED: "This interview was cancelled.",
+  FAILED: "This interview didn't complete. Please reach out to the recruiter who invited you.",
 };
 
 export function useCandidateLanding(

@@ -27,6 +27,13 @@ function formatTimecode(t: Date, base: Date): string {
 // --foreground color. Timecodes mono + muted, hover-revealed only.
 export function TranscriptFeed({ entries, className }: TranscriptFeedProps) {
   const base = entries[0]?.timestamp ?? new Date();
+  const endRef = React.useRef<HTMLLIElement>(null);
+
+  React.useEffect(() => {
+    // Keep the newest transcript turn visible inside the bounded scroll region.
+    endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+  }, [entries.length]);
+
   return (
     <ol
       aria-live="polite"
@@ -37,8 +44,13 @@ export function TranscriptFeed({ entries, className }: TranscriptFeedProps) {
     >
       {entries.map((entry, i) => {
         const isAi = entry.speaker === "agent";
+        const isLast = i === entries.length - 1;
         return (
-          <li key={i} className="group flex flex-col gap-1">
+          <li
+            key={i}
+            ref={isLast ? endRef : undefined}
+            className="group flex flex-col gap-1"
+          >
             <span
               className={cn(
                 "text-xs font-medium uppercase tracking-[0.02em]",

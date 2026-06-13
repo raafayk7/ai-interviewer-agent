@@ -7,7 +7,8 @@ export type InterviewStatusValue =
   | "IN_PROGRESS"
   | "COMPLETED"
   | "EVALUATED"
-  | "CANCELLED";
+  | "CANCELLED"
+  | "FAILED";
 
 const VARIANT: Record<InterviewStatusValue, BadgeProps["variant"]> = {
   CREATED: "secondary",
@@ -15,7 +16,12 @@ const VARIANT: Record<InterviewStatusValue, BadgeProps["variant"]> = {
   IN_PROGRESS: "positive",
   COMPLETED: "outline",
   EVALUATED: "positive",
-  CANCELLED: "negative",
+  // Interview *states*, not "reject" outcomes — DESIGN §2 reserves --negative for
+  // recommendation pills + validation. CANCELLED reads as a quiet terminal non-state
+  // (muted); FAILED reads as "needs attention" (amber), matching the candidate-side
+  // connection-loss treatment (--attention-warning).
+  CANCELLED: "secondary",
+  FAILED: "attention-warning",
 };
 
 const LABEL: Record<InterviewStatusValue, string> = {
@@ -25,6 +31,7 @@ const LABEL: Record<InterviewStatusValue, string> = {
   COMPLETED: "Completed",
   EVALUATED: "Report ready",
   CANCELLED: "Cancelled",
+  FAILED: "Failed",
 };
 
 export interface InterviewStatusBadgeProps {

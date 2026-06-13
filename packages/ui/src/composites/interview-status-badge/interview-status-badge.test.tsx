@@ -14,6 +14,7 @@ const ALL_STATUSES: InterviewStatusValue[] = [
   "COMPLETED",
   "EVALUATED",
   "CANCELLED",
+  "FAILED",
 ];
 
 // ---------------------------------------------------------------------------
@@ -49,6 +50,11 @@ describe("InterviewStatusBadge — label rendering", () => {
   it("renders 'Cancelled' label for CANCELLED status", () => {
     render(<InterviewStatusBadge status="CANCELLED" />);
     expect(screen.getByText("Cancelled")).toBeInTheDocument();
+  });
+
+  it("renders 'Failed' label for FAILED status", () => {
+    render(<InterviewStatusBadge status="FAILED" />);
+    expect(screen.getByText("Failed")).toBeInTheDocument();
   });
 });
 
@@ -90,6 +96,12 @@ describe("InterviewStatusBadge — dot indicator", () => {
 
   it("does not render a dot indicator for CANCELLED status", () => {
     const { container } = render(<InterviewStatusBadge status="CANCELLED" />);
+    const dot = container.querySelector("span > span");
+    expect(dot).not.toBeInTheDocument();
+  });
+
+  it("does not render a dot indicator for FAILED status", () => {
+    const { container } = render(<InterviewStatusBadge status="FAILED" />);
     const dot = container.querySelector("span > span");
     expect(dot).not.toBeInTheDocument();
   });
