@@ -1,5 +1,5 @@
-import { UploadCandidateDocumentsUseCase } from "@repo/application";
-import { LocalFileStorageService } from "../infrastructure/services/index.js";
+import { UploadCandidateDocumentsUseCase, type IFileStorageService } from "@repo/application";
+import { fileStorageFromEnv } from "../infrastructure/services/index.js";
 
 export interface UploadCandidateDocumentsDepsBundle {
   readonly buildUseCase: () => UploadCandidateDocumentsUseCase;
@@ -7,7 +7,7 @@ export interface UploadCandidateDocumentsDepsBundle {
 
 export interface UploadCandidateDocumentsCompositionOptions {
   readonly env?: NodeJS.ProcessEnv;
-  readonly storage?: LocalFileStorageService;
+  readonly storage?: IFileStorageService;
 }
 
 export function buildUploadCandidateDocumentsDeps(
@@ -15,7 +15,7 @@ export function buildUploadCandidateDocumentsDeps(
 ): UploadCandidateDocumentsDepsBundle {
   const storageResult =
     options.storage === undefined
-      ? LocalFileStorageService.fromEnv(options.env ?? process.env)
+      ? fileStorageFromEnv(options.env ?? process.env)
       : undefined;
 
   if (storageResult?.isErr()) {
@@ -25,7 +25,7 @@ export function buildUploadCandidateDocumentsDeps(
   const storage = options.storage ?? storageResult?.unwrap();
   if (!storage) {
     throw new Error(
-      "Boot failed: LocalFileStorageService could not be constructed",
+      "Boot failed: file storage service could not be constructed",
     );
   }
 

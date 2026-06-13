@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc",
+    "build": "rm -rf dist && tsc",
     "check-types": "tsc --noEmit",
     "dev": "tsx watch --env-file=.env src/main.ts",
     "start": "node dist/main.js",
@@ -18,6 +18,8 @@
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.61",
+    "@aws-sdk/client-s3": "^3.1068.0",
+    "@aws-sdk/s3-request-presigner": "^3.1068.0",
     "@carbonteq/fp": "^0.9.1",
     "@deepgram/sdk": "^5.0.0",
     "@elevenlabs/elevenlabs-js": "^2.49.1",

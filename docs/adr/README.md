@@ -18,7 +18,7 @@ An ADR captures the context and reasoning behind a design choice that constrains
 |---|---|
 | [Architecture & Cross-Cutting](#architecture--cross-cutting) | 1 |
 | [AI & Voice Pipeline](#ai--voice-pipeline) | 10 |
-| [Data & Storage](#data--storage) | 2 |
+| [Data & Storage](#data--storage) | 3 |
 | [Observability](#observability) | 6 |
 | [Domain & Application Design](#domain--application-design) | 4 |
 | [Authentication & Security](#authentication--security) | 3 |
@@ -58,6 +58,7 @@ An ADR captures the context and reasoning behind a design choice that constrains
 |---|---|---|---|
 | [ADR-005](ADR-005-abstract-file-storage-via-port-adapter.md) | Abstract File Storage via Port and Adapter | Accepted | 2026-05-09 |
 | [ADR-007](ADR-007-persist-extracted-jd-cv-through-interview-aggregate-jsonb-columns.md) | Persist Extracted JD/CV Through the Interview Aggregate's Existing JSONB Columns | Accepted | 2026-05-09 |
+| [ADR-036](ADR-036-s3-compatible-file-storage-adapter-selectable-via-file-storage-driver.md) | S3-Compatible File Storage Adapter Selectable via FILE_STORAGE_DRIVER | Proposed | 2026-06-14 |
 
 ### Observability
 
@@ -136,6 +137,7 @@ ADR-001 (Clean Architecture)
   │     └── ADR-009 (Factory closure for telemetry)
   │           └── ADR-008 (Two-step orchestration)
   └── ADR-005 (File Storage — port/adapter pattern)
+  │     └── ADR-036 (S3-compatible adapter + FILE_STORAGE_DRIVER selection — extends ADR-005)
   │     └── ADR-007 (Store extracted VOs in aggregate JSONB)
   │           └── ADR-008 (Two-step orchestration)
   └── ADR-002 (Voice pipeline — port/adapter pattern)

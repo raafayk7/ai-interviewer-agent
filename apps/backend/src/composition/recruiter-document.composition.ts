@@ -6,7 +6,7 @@ import {
 import {
   GeminiDocumentExtractionService,
   geminiProviderFromEnv,
-  LocalFileStorageService,
+  fileStorageFromEnv,
 } from "../infrastructure/services/index.js";
 import type { RecruiterDocumentControllerDeps } from "../presentation/controllers/recruiter-document.controller.js";
 
@@ -18,7 +18,7 @@ export function buildRecruiterDocumentDeps(
   options: RecruiterDocumentCompositionOptions = {},
 ): RecruiterDocumentControllerDeps {
   const env = options.env ?? process.env;
-  const storage = LocalFileStorageService.fromEnv(env);
+  const storage = fileStorageFromEnv(env);
   if (storage.isErr()) {
     throw new Error(`Boot failed: ${storage.unwrapErr().message}`);
   }

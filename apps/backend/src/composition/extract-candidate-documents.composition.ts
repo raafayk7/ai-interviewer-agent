@@ -1,12 +1,13 @@
 import {
   ExtractCandidateDocumentsUseCase,
   type DocumentExtractorFactory,
+  type IFileStorageService,
 } from "@repo/application";
 import {
   geminiProviderFromEnv,
   GeminiDocumentExtractionService,
 } from "../infrastructure/services/gemini/index.js";
-import { LocalFileStorageService } from "../infrastructure/services/index.js";
+import { fileStorageFromEnv } from "../infrastructure/services/index.js";
 
 export interface ExtractCandidateDocumentsDepsBundle {
   readonly buildUseCase: () => ExtractCandidateDocumentsUseCase;
@@ -14,7 +15,7 @@ export interface ExtractCandidateDocumentsDepsBundle {
 
 export interface ExtractCandidateDocumentsCompositionOptions {
   readonly env?: NodeJS.ProcessEnv;
-  readonly storage?: LocalFileStorageService;
+  readonly storage?: IFileStorageService;
 }
 
 export function buildExtractCandidateDocumentsDeps(
@@ -24,7 +25,7 @@ export function buildExtractCandidateDocumentsDeps(
 
   const storageResult =
     options.storage === undefined
-      ? LocalFileStorageService.fromEnv(env)
+      ? fileStorageFromEnv(env)
       : undefined;
   if (storageResult?.isErr()) {
     throw new Error(`Boot failed: ${storageResult.unwrapErr().message}`);
@@ -38,7 +39,7 @@ export function buildExtractCandidateDocumentsDeps(
   const storage = options.storage ?? storageResult?.unwrap();
   if (!storage) {
     throw new Error(
-      "Boot failed: LocalFileStorageService could not be constructed",
+      "Boot failed: file storage service could not be constructed",
     );
   }
 
