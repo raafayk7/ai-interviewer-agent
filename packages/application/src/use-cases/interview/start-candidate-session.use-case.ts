@@ -3,6 +3,7 @@ import {
   INTERVIEW_STATUS,
   InterviewNotFoundError,
   InvalidInterviewInputError,
+  SessionAlreadyActiveError,
   type IInterviewRepository,
 } from "@repo/domain";
 import { ServiceUnknownError, type ServiceError } from "../../core/service-error.js";
@@ -76,6 +77,13 @@ export class StartCandidateSessionUseCase extends UseCase<
       return planOrError;
     }
     const plan = planOrError.unwrap();
+
+    const alreadyActive =
+      interview.status === INTERVIEW_STATUS.IN_PROGRESS &&
+      interview.elevenLabsSessionId.isSome();
+    if (alreadyActive) {
+      return Result.Err(new SessionAlreadyActiveError(interview.id) as ServiceError);
+    }
 
     const issued = await this.agent.issueSignedUrl({ agentId: input.agentId });
     if (issued.isErr()) {

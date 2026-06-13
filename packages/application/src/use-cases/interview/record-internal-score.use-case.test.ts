@@ -107,6 +107,7 @@ const makeRepo = (
   findByElevenLabsSessionId: vi.fn().mockResolvedValue(
     Result.Ok(interview === null ? Option.None : Option.Some(interview)),
   ),
+  findStuckInProgress: vi.fn().mockResolvedValue(Result.Ok([])),
   listByRecruiter: vi.fn(),
   delete: vi.fn(),
   ...overrides,

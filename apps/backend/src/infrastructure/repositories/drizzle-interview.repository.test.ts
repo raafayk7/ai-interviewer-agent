@@ -109,10 +109,14 @@ function buildTranscriptEntries(): ReadonlyArray<TranscriptEntry> {
 }
 
 function startInterview(interview: Interview): Interview {
+  return startInterviewAt(interview, new Date("2026-02-15T10:00:00Z"));
+}
+
+function startInterviewAt(interview: Interview, at: Date): Interview {
   const scheduleResult = interview.schedule(buildInterviewPlan());
   expect(scheduleResult.isOk()).toBe(true);
 
-  const startResult = scheduleResult.unwrap().start(new Date("2026-02-15T10:00:00Z"));
+  const startResult = scheduleResult.unwrap().start(at);
   expect(startResult.isOk()).toBe(true);
 
   return startResult.unwrap();
@@ -252,6 +256,37 @@ describe("[Integration] DrizzleInterviewRepository", () => {
     const listResult = await repo.listByRecruiter("recruiter-unknown");
     expect(listResult.isOk()).toBe(true);
     expect(listResult.unwrap()).toHaveLength(0);
+  });
+
+  it("findStuckInProgress returns only IN_PROGRESS interviews started before the cutoff", async () => {
+    const stuck = startInterviewAt(
+      buildInterview("recruiter-stuck"),
+      new Date("2026-02-15T10:00:00Z"),
+    );
+    const recent = startInterviewAt(
+      buildInterview("recruiter-recent"),
+      new Date("2026-02-15T10:50:00Z"),
+    );
+    const completedStarted = startInterviewAt(
+      buildInterview("recruiter-completed"),
+      new Date("2026-02-15T09:50:00Z"),
+    );
+    const completedResult = completedStarted.complete(
+      new Date("2026-02-15T10:45:00Z"),
+      buildTranscriptEntries(),
+    );
+    expect(completedResult.isOk()).toBe(true);
+    const completed = completedResult.unwrap();
+
+    await repo.save(stuck);
+    await repo.save(recent);
+    await repo.save(completed);
+
+    const result = await repo.findStuckInProgress(new Date("2026-02-15T10:30:00Z"));
+    expect(result.isOk()).toBe(true);
+
+    const ids = result.unwrap().map((interview) => interview.id).sort();
+    expect(ids).toEqual([stuck.id]);
   });
 
   it("delete removes the row and subsequent findById returns None", async () => {

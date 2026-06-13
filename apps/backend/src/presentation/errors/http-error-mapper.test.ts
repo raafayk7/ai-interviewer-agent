@@ -87,6 +87,16 @@ describe("mapServiceErrorToHttp", () => {
       const { status } = mapServiceErrorToHttp(makeError("INTERVIEW_PLAN_REQUIRED"));
       expect(status).toBe(409);
     });
+
+    it("maps SESSION_ALREADY_ACTIVE → 409", () => {
+      const { status } = mapServiceErrorToHttp(makeError("SESSION_ALREADY_ACTIVE"));
+      expect(status).toBe(409);
+    });
+
+    it("maps TRANSCRIPT_NOT_STRICTLY_BETTER → 409", () => {
+      const { status } = mapServiceErrorToHttp(makeError("TRANSCRIPT_NOT_STRICTLY_BETTER"));
+      expect(status).toBe(409);
+    });
   });
 
   describe("known 422 codes", () => {

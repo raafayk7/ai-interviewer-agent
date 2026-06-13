@@ -5,6 +5,7 @@ export const INTERVIEW_STATUS = {
   COMPLETED: "COMPLETED",
   EVALUATED: "EVALUATED",
   CANCELLED: "CANCELLED",
+  FAILED: "FAILED",
 } as const;
 
 export type InterviewStatus = (typeof INTERVIEW_STATUS)[keyof typeof INTERVIEW_STATUS];
@@ -13,18 +14,20 @@ export type InterviewStatus = (typeof INTERVIEW_STATUS)[keyof typeof INTERVIEW_S
  * Allowed transitions (closed set per §5.4):
  *   CREATED      → SCHEDULED
  *   SCHEDULED    → IN_PROGRESS
- *   IN_PROGRESS  → COMPLETED | CANCELLED
+ *   IN_PROGRESS  → COMPLETED | CANCELLED | FAILED
  *   COMPLETED    → EVALUATED
  *   EVALUATED    → (terminal)
  *   CANCELLED    → (terminal)
+ *   FAILED       → (terminal)
  */
 const ALLOWED: Readonly<Record<InterviewStatus, ReadonlyArray<InterviewStatus>>> = {
   CREATED: ["SCHEDULED"],
   SCHEDULED: ["IN_PROGRESS"],
-  IN_PROGRESS: ["COMPLETED", "CANCELLED"],
+  IN_PROGRESS: ["COMPLETED", "CANCELLED", "FAILED"],
   COMPLETED: ["EVALUATED"],
   EVALUATED: [],
   CANCELLED: [],
+  FAILED: [],
 };
 
 export const InterviewStatusPolicy = {

@@ -41,6 +41,15 @@ export interface RecruiterInterviewControllerDeps {
     { readonly interviewId: string },
     IssueCandidateLinkOutput
   >;
+  readonly reconcileStuckInterviewsUseCase: UseCaseLike<
+    { readonly thresholdMinutes: number },
+    {
+      readonly scanned: number;
+      readonly completed: ReadonlyArray<string>;
+      readonly failed: ReadonlyArray<string>;
+    }
+  >;
+  readonly reconcileThresholdMinutes: number;
   readonly candidateLink: CandidateLinkIssuer;
   readonly publicBaseUrl: string;
 }
@@ -190,6 +199,19 @@ export class RecruiterInterviewController {
           },
         }),
     });
+  }
+
+  async reconcileStuck(_req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const result = await this.deps.reconcileStuckInterviewsUseCase.execute({
+      thresholdMinutes: this.deps.reconcileThresholdMinutes,
+    });
+    if (result.isErr()) {
+      sendError(reply, result.unwrapErr());
+      return;
+    }
+
+    // Success defaults to 200; error status codes are owned by sendError/mapServiceErrorToHttp (ADR-018).
+    await reply.send(result.unwrap());
   }
 
   private buildCandidateLink(interviewId: string): {

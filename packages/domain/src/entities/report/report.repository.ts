@@ -6,4 +6,5 @@ export interface IReportRepository {
   save(report: Report): Promise<Result<Report, Error>>;
   findById(id: string): Promise<Result<Option<Report>, Error>>;
   findByInterviewId(interviewId: InterviewId): Promise<Result<Option<Report>, Error>>;
+  deleteByInterviewId(interviewId: InterviewId): Promise<Result<void, Error>>;
 }

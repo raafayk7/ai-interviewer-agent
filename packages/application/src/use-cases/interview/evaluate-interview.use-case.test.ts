@@ -159,6 +159,7 @@ const makeInterviewRepo = (
   save: vi.fn(),
   findById: vi.fn(),
   findByElevenLabsSessionId: vi.fn(),
+  findStuckInProgress: vi.fn(),
   listByRecruiter: vi.fn(),
   delete: vi.fn(),
   ...overrides,
@@ -168,6 +169,7 @@ const makeReportRepo = (overrides: Partial<IReportRepository> = {}): IReportRepo
   save: vi.fn(),
   findById: vi.fn(),
   findByInterviewId: vi.fn(),
+  deleteByInterviewId: vi.fn(),
   ...overrides,
 });
 

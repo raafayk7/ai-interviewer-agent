@@ -92,4 +92,13 @@ export class DrizzleReportRepository implements IReportRepository {
       )
       .toPromise();
   }
+
+  async deleteByInterviewId(interviewId: InterviewId): Promise<Result<void, Error>> {
+    return Result.tryAsyncCatch(
+      () => this.db.delete(reports).where(eq(reports.interviewId, interviewId)),
+      translatePgError("ReportRepository.deleteByInterviewId"),
+    )
+      .map(() => undefined)
+      .toPromise();
+  }
 }

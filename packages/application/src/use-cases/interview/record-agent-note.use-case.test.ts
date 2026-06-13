@@ -2,7 +2,6 @@ import { Option, Result } from "@carbonteq/fp";
 import {
   CandidateInfo,
   FileRef,
-  INTERVIEW_STATUS,
   Interview,
   InterviewNotFoundError,
   InterviewPlan,
@@ -108,6 +107,7 @@ const makeRepo = (
   findByElevenLabsSessionId: vi.fn().mockResolvedValue(
     Result.Ok(interview === null ? Option.None : Option.Some(interview)),
   ),
+  findStuckInProgress: vi.fn().mockResolvedValue(Result.Ok([])),
   listByRecruiter: vi.fn(),
   delete: vi.fn(),
   ...overrides,

@@ -29,3 +29,19 @@ export class InterviewNotFoundError extends NotFoundError {
     super(`Interview with id ${id} not found`);
   }
 }
+
+export class SessionAlreadyActiveError extends BusinessRuleViolationError {
+  readonly code = "SESSION_ALREADY_ACTIVE";
+  constructor(interviewId: string) {
+    super(`Interview ${interviewId} already has an active ElevenLabs session`);
+  }
+}
+
+export class TranscriptNotStrictlyBetterError extends BusinessRuleViolationError {
+  readonly code = "TRANSCRIPT_NOT_STRICTLY_BETTER";
+  constructor(interviewId: string, storedCount: number, incomingCount: number) {
+    super(
+      `Incoming transcript (${incomingCount} entries) is not strictly better than stored (${storedCount}) for interview ${interviewId}`,
+    );
+  }
+}

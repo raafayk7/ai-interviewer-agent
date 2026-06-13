@@ -8,11 +8,14 @@ import {
   InterviewPlan,
   JobDescription,
   PlannedTopic,
+  SPEAKER,
   TOPIC_PRIORITY,
+  TranscriptEntry,
   type IInterviewRepository,
 } from "@repo/domain";
 import { describe, expect, it, vi } from "vitest";
 import { ServiceUnknownError } from "../../core/service-error.js";
+import type { IInterviewReportInvalidationService } from "../../ports/interview-report-invalidation/index.js";
 import {
   PersistCompletedTranscriptUseCase,
   type PostCallTranscriptEntry,
@@ -99,10 +102,31 @@ const makeInProgressInterview = (): Interview => {
   return result.unwrap();
 };
 
-const makeCompletedInterview = (): Interview => {
-  const result = makeInProgressInterview().complete(now, []);
+const makeDomainTranscript = (count: number): ReadonlyArray<TranscriptEntry> =>
+  Array.from({ length: count }, (_, index) => {
+    const result = TranscriptEntry.create({
+      speaker: index % 2 === 0 ? SPEAKER.AGENT : SPEAKER.CANDIDATE,
+      text: `Stored transcript entry ${index + 1}`,
+      timestamp: new Date(now.getTime() + index * 1000),
+    });
+    expect(result.isOk()).toBe(true);
+    return result.unwrap();
+  });
+
+const makeCompletedInterview = (
+  transcript: ReadonlyArray<TranscriptEntry> = [],
+): Interview => {
+  const result = makeInProgressInterview().complete(now, transcript);
   expect(result.isOk()).toBe(true);
   return result.unwrap();
+};
+
+const makeEvaluatedInterview = (
+  transcript: ReadonlyArray<TranscriptEntry> = [],
+): Interview => {
+  const evaluated = makeCompletedInterview(transcript).markEvaluated("report-001");
+  expect(evaluated.isOk()).toBe(true);
+  return evaluated.unwrap();
 };
 
 const makeRepo = (
@@ -116,8 +140,16 @@ const makeRepo = (
   findByElevenLabsSessionId: vi.fn().mockResolvedValue(
     Result.Ok(interview === null ? Option.None : Option.Some(interview)),
   ),
+  findStuckInProgress: vi.fn().mockResolvedValue(Result.Ok([])),
   listByRecruiter: vi.fn(),
   delete: vi.fn(),
+  ...overrides,
+});
+
+const makeReportInvalidation = (
+  overrides: Partial<IInterviewReportInvalidationService> = {},
+): IInterviewReportInvalidationService => ({
+  invalidateStaleReport: vi.fn().mockResolvedValue(Result.Ok(undefined)),
   ...overrides,
 });
 
@@ -125,6 +157,10 @@ const makeTranscript = (): ReadonlyArray<PostCallTranscriptEntry> => [
   { role: "agent", message: "Tell me about yourself.", timeInCallSecs: 0, toolResults: null },
   { role: "user", message: "   ", timeInCallSecs: 5, toolResults: null },
   { role: "user", message: "I build APIs.", timeInCallSecs: 10, toolResults: null },
+];
+
+const makeShortTranscript = (): ReadonlyArray<PostCallTranscriptEntry> => [
+  { role: "agent", message: "One useful turn.", timeInCallSecs: 0, toolResults: null },
 ];
 
 const makeTranscriptWithEndCall = (
@@ -150,7 +186,7 @@ describe("[Integration] PersistCompletedTranscriptUseCase", () => {
   describe("execute() — happy path without end_call_success", () => {
     it("returns Ok({ applied: true, entryCount: 2 }) filtering the empty row", async () => {
       const repo = makeRepo(makeInProgressInterview());
-      const useCase = new PersistCompletedTranscriptUseCase(repo);
+      const useCase = new PersistCompletedTranscriptUseCase(repo, makeReportInvalidation());
 
       const result = await useCase.execute({ ...baseInput, transcript: makeTranscript() });
 
@@ -160,7 +196,7 @@ describe("[Integration] PersistCompletedTranscriptUseCase", () => {
 
     it("saves the interview with COMPLETED status", async () => {
       const repo = makeRepo(makeInProgressInterview());
-      const useCase = new PersistCompletedTranscriptUseCase(repo);
+      const useCase = new PersistCompletedTranscriptUseCase(repo, makeReportInvalidation());
 
       await useCase.execute({ ...baseInput, transcript: makeTranscript() });
 
@@ -170,7 +206,7 @@ describe("[Integration] PersistCompletedTranscriptUseCase", () => {
 
     it("filters whitespace-only message rows from transcript", async () => {
       const repo = makeRepo(makeInProgressInterview());
-      const useCase = new PersistCompletedTranscriptUseCase(repo);
+      const useCase = new PersistCompletedTranscriptUseCase(repo, makeReportInvalidation());
 
       await useCase.execute({ ...baseInput, transcript: makeTranscript() });
 
@@ -182,7 +218,7 @@ describe("[Integration] PersistCompletedTranscriptUseCase", () => {
   describe("execute() — with end_call_success in transcript", () => {
     it("appends an AgentNote with the end_call reason before completing", async () => {
       const repo = makeRepo(makeInProgressInterview());
-      const useCase = new PersistCompletedTranscriptUseCase(repo);
+      const useCase = new PersistCompletedTranscriptUseCase(repo, makeReportInvalidation());
 
       const result = await useCase.execute({
         ...baseInput,
@@ -202,7 +238,7 @@ describe("[Integration] PersistCompletedTranscriptUseCase", () => {
 
     it("includes end_call message in the note when present", async () => {
       const repo = makeRepo(makeInProgressInterview());
-      const useCase = new PersistCompletedTranscriptUseCase(repo);
+      const useCase = new PersistCompletedTranscriptUseCase(repo, makeReportInvalidation());
 
       await useCase.execute({
         ...baseInput,
@@ -223,7 +259,7 @@ describe("[Integration] PersistCompletedTranscriptUseCase", () => {
         { role: "agent", message: null, timeInCallSecs: 60, toolResults: [{ resultType: "end_call_success", resultValue: { reason: "time_up" } }] },
       ];
       const repo = makeRepo(makeInProgressInterview());
-      const useCase = new PersistCompletedTranscriptUseCase(repo);
+      const useCase = new PersistCompletedTranscriptUseCase(repo, makeReportInvalidation());
 
       await useCase.execute({ ...baseInput, transcript });
 
@@ -237,7 +273,7 @@ describe("[Integration] PersistCompletedTranscriptUseCase", () => {
         { role: "agent", message: "Goodbye.", timeInCallSecs: 30, toolResults: [{ resultType: "end_call_success" }] },
       ];
       const repo = makeRepo(makeInProgressInterview());
-      const useCase = new PersistCompletedTranscriptUseCase(repo);
+      const useCase = new PersistCompletedTranscriptUseCase(repo, makeReportInvalidation());
 
       await useCase.execute({ ...baseInput, transcript });
 
@@ -254,7 +290,7 @@ describe("[Integration] PersistCompletedTranscriptUseCase", () => {
         { role: "user", message: "  ", timeInCallSecs: 5, toolResults: null },
       ];
       const repo = makeRepo(makeInProgressInterview());
-      const useCase = new PersistCompletedTranscriptUseCase(repo);
+      const useCase = new PersistCompletedTranscriptUseCase(repo, makeReportInvalidation());
 
       const result = await useCase.execute({ ...baseInput, transcript });
 
@@ -264,7 +300,7 @@ describe("[Integration] PersistCompletedTranscriptUseCase", () => {
 
     it("completes with empty transcript when transcript is empty", async () => {
       const repo = makeRepo(makeInProgressInterview());
-      const useCase = new PersistCompletedTranscriptUseCase(repo);
+      const useCase = new PersistCompletedTranscriptUseCase(repo, makeReportInvalidation());
 
       const result = await useCase.execute({ ...baseInput, transcript: [] });
 
@@ -273,23 +309,71 @@ describe("[Integration] PersistCompletedTranscriptUseCase", () => {
     });
   });
 
-  describe("execute() — idempotent no-op when already COMPLETED", () => {
-    it("returns Ok({ applied: false, entryCount: 0 }) when interview is COMPLETED", async () => {
-      const repo = makeRepo(makeCompletedInterview());
-      const useCase = new PersistCompletedTranscriptUseCase(repo);
+  describe("execute() — best-transcript-wins for already completed interviews", () => {
+    it("recompletes and saves when a COMPLETED interview receives a strictly better transcript", async () => {
+      const repo = makeRepo(makeCompletedInterview(makeDomainTranscript(1)));
+      const useCase = new PersistCompletedTranscriptUseCase(repo, makeReportInvalidation());
 
       const result = await useCase.execute({ ...baseInput, transcript: makeTranscript() });
 
       expect(result.isOk()).toBe(true);
-      expect(result.unwrap()).toEqual({ applied: false, entryCount: 0 });
+      expect(result.unwrap()).toEqual({ applied: true, entryCount: 2 });
+      expect(repo.save).toHaveBeenCalledTimes(1);
+      const saved = vi.mocked(repo.save).mock.calls[0]?.[0];
+      expect(saved?.status).toBe(INTERVIEW_STATUS.COMPLETED);
+      expect(saved?.transcript).toHaveLength(2);
     });
 
-    it("does not call repo.save when interview is already COMPLETED", async () => {
-      const repo = makeRepo(makeCompletedInterview());
-      const useCase = new PersistCompletedTranscriptUseCase(repo);
+    it("does not save when a COMPLETED interview receives an equal transcript", async () => {
+      const repo = makeRepo(makeCompletedInterview(makeDomainTranscript(2)));
+      const useCase = new PersistCompletedTranscriptUseCase(repo, makeReportInvalidation());
 
       await useCase.execute({ ...baseInput, transcript: makeTranscript() });
 
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it("does not save when a COMPLETED interview receives a shorter transcript", async () => {
+      const repo = makeRepo(makeCompletedInterview(makeDomainTranscript(2)));
+      const useCase = new PersistCompletedTranscriptUseCase(repo, makeReportInvalidation());
+
+      const result = await useCase.execute({ ...baseInput, transcript: makeShortTranscript() });
+
+      expect(result.isOk()).toBe(true);
+      expect(result.unwrap()).toEqual({ applied: false, entryCount: 0 });
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it("reverts EVALUATED to COMPLETED and invalidates the stale report atomically via the port", async () => {
+      const repo = makeRepo(makeEvaluatedInterview(makeDomainTranscript(1)));
+      const reportInvalidation = makeReportInvalidation();
+      const useCase = new PersistCompletedTranscriptUseCase(repo, reportInvalidation);
+
+      const result = await useCase.execute({ ...baseInput, transcript: makeTranscript() });
+
+      expect(result.isOk()).toBe(true);
+      expect(result.unwrap()).toEqual({ applied: true, entryCount: 2 });
+      expect(repo.save).not.toHaveBeenCalled();
+      expect(reportInvalidation.invalidateStaleReport).toHaveBeenCalledTimes(1);
+      const invalidatedInterview = vi.mocked(
+        reportInvalidation.invalidateStaleReport,
+      ).mock.calls[0]?.[0];
+      expect(invalidatedInterview?.status).toBe(INTERVIEW_STATUS.COMPLETED);
+      expect(invalidatedInterview?.reportId.isNone()).toBe(true);
+      expect(invalidatedInterview?.transcript).toHaveLength(2);
+    });
+
+    it("returns ServiceUnknownError when stale report invalidation fails", async () => {
+      const repo = makeRepo(makeEvaluatedInterview(makeDomainTranscript(1)));
+      const reportInvalidation = makeReportInvalidation({
+        invalidateStaleReport: vi.fn().mockResolvedValue(Result.Err(new Error("tx failed"))),
+      });
+      const useCase = new PersistCompletedTranscriptUseCase(repo, reportInvalidation);
+
+      const result = await useCase.execute({ ...baseInput, transcript: makeTranscript() });
+
+      expect(result.isErr()).toBe(true);
+      expect(result.unwrapErr()).toBeInstanceOf(ServiceUnknownError);
       expect(repo.save).not.toHaveBeenCalled();
     });
   });
@@ -299,7 +383,7 @@ describe("[Integration] PersistCompletedTranscriptUseCase", () => {
       const repo = makeRepo(makeInProgressInterview(), {
         save: vi.fn().mockResolvedValue(Result.Err(new Error("database unavailable"))),
       });
-      const useCase = new PersistCompletedTranscriptUseCase(repo);
+      const useCase = new PersistCompletedTranscriptUseCase(repo, makeReportInvalidation());
 
       const result = await useCase.execute({ ...baseInput, transcript: makeTranscript() });
 
@@ -309,7 +393,7 @@ describe("[Integration] PersistCompletedTranscriptUseCase", () => {
 
     it("returns Err(InterviewNotFoundError) when interview does not exist", async () => {
       const repo = makeRepo(null);
-      const useCase = new PersistCompletedTranscriptUseCase(repo);
+      const useCase = new PersistCompletedTranscriptUseCase(repo, makeReportInvalidation());
 
       const result = await useCase.execute({ ...baseInput, interviewId: "missing-id", transcript: [] });
 
@@ -321,7 +405,7 @@ describe("[Integration] PersistCompletedTranscriptUseCase", () => {
       const repo = makeRepo(null, {
         findById: vi.fn().mockResolvedValue(Result.Err(new Error("db error"))),
       });
-      const useCase = new PersistCompletedTranscriptUseCase(repo);
+      const useCase = new PersistCompletedTranscriptUseCase(repo, makeReportInvalidation());
 
       const result = await useCase.execute({ ...baseInput, transcript: [] });
 

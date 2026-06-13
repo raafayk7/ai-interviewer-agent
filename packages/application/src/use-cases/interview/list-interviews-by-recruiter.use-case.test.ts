@@ -50,6 +50,7 @@ const makeRepo = (overrides: Partial<IInterviewRepository>): IInterviewRepositor
   save: vi.fn(),
   findById: vi.fn(),
   findByElevenLabsSessionId: vi.fn(),
+  findStuckInProgress: vi.fn(),
   listByRecruiter: vi.fn(),
   delete: vi.fn(),
   ...overrides,

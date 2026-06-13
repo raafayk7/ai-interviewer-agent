@@ -17,7 +17,7 @@ An ADR captures the context and reasoning behind a design choice that constrains
 | Category | Count |
 |---|---|
 | [Architecture & Cross-Cutting](#architecture--cross-cutting) | 1 |
-| [AI & Voice Pipeline](#ai--voice-pipeline) | 9 |
+| [AI & Voice Pipeline](#ai--voice-pipeline) | 10 |
 | [Data & Storage](#data--storage) | 2 |
 | [Observability](#observability) | 6 |
 | [Domain & Application Design](#domain--application-design) | 4 |
@@ -50,6 +50,7 @@ An ADR captures the context and reasoning behind a design choice that constrains
 | [ADR-031](ADR-031-elevenlabs-webhooks-drive-interview-lifecycle.md) | ElevenLabs Webhooks Drive the Interview Lifecycle | Superseded by ADR-034 | 2026-05-27 |
 | [ADR-033](ADR-033-elevenlabs-static-agent-server-built-overrides-via-browser-sdk.md) | ElevenLabs Static Agent: Server-Built Overrides Delivered Inline via Browser SDK (supersedes ADR-030; owns SCHEDULED to IN_PROGRESS transition at issuance) | Accepted | 2026-05-29 |
 | [ADR-034](ADR-034-elevenlabs-lifecycle-two-webhooks-per-tool-urls-scoped-hmac.md) | ElevenLabs Lifecycle: Two Inbound Webhook Surfaces with Scoped HMAC, Per-Tool URLs, and Post-Call End-Reason Recovery (supersedes ADR-031) | Accepted | 2026-05-29 |
+| [ADR-035](ADR-035-elevenlabs-session-integrity-idempotent-binding-best-transcript-wins-reconciliation-failed-state.md) | ElevenLabs Interview Session Integrity: Idempotent Binding, Best-Transcript-Wins, Reconciliation, and a FAILED Terminal State (extends/partially supersedes ADR-034) | Accepted | 2026-06-13 |
 
 ### Data & Storage
 

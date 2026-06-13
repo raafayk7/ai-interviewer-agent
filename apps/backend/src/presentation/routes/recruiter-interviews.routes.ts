@@ -23,6 +23,9 @@ export const registerRecruiterInterviewRoutes: FastifyPluginAsync<
   app.get("/interviews", { preHandler: requireRecruiter }, (req, reply) =>
     controller.list(req, reply),
   );
+  app.post("/interviews/reconcile-stuck", { preHandler: requireRecruiter }, (req, reply) =>
+    controller.reconcileStuck(req, reply),
+  );
   app.get<{ Params: { id: string } }>(
     "/interviews/:id",
     { preHandler: requireRecruiter },

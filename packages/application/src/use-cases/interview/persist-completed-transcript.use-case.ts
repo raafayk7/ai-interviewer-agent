@@ -10,6 +10,7 @@ import {
 } from "@repo/domain";
 import { ServiceUnknownError, type ServiceError } from "../../core/service-error.js";
 import { UseCase } from "../../core/use-case.js";
+import type { IInterviewReportInvalidationService } from "../../ports/interview-report-invalidation/index.js";
 
 export interface PostCallToolResult {
   readonly resultType: string;
@@ -39,7 +40,10 @@ export class PersistCompletedTranscriptUseCase extends UseCase<
   PersistCompletedTranscriptInput,
   PersistCompletedTranscriptOutput
 > {
-  constructor(private readonly interviews: IInterviewRepository) {
+  constructor(
+    private readonly interviews: IInterviewRepository,
+    private readonly reportInvalidation: IInterviewReportInvalidationService,
+  ) {
     super();
   }
 
@@ -62,12 +66,6 @@ export class PersistCompletedTranscriptUseCase extends UseCase<
     }
 
     const interview = interviewOrError.unwrap();
-    if (
-      interview.status === INTERVIEW_STATUS.COMPLETED ||
-      interview.status === INTERVIEW_STATUS.EVALUATED
-    ) {
-      return Result.Ok({ applied: false, entryCount: 0 });
-    }
 
     // Walk the transcript for an end_call_success tool result and append a note.
     const endCall = findEndCallSuccess(input.transcript);
@@ -112,19 +110,69 @@ export class PersistCompletedTranscriptUseCase extends UseCase<
     }
 
     const entries = entriesResult.unwrap();
-    const completed = intermediate.complete(input.occurredAt, entries);
-    if (completed.isErr()) {
-      return Result.Ok({ applied: false, entryCount: 0 });
+
+    if (interview.status === INTERVIEW_STATUS.IN_PROGRESS) {
+      const completed = intermediate.complete(input.occurredAt, entries);
+      if (completed.isErr()) {
+        return Result.Ok({ applied: false, entryCount: 0 });
+      }
+
+      const saved = await this.interviews.save(completed.unwrap());
+      if (saved.isErr()) {
+        return Result.Err(
+          new ServiceUnknownError(saved.unwrapErr().message, "InterviewRepository.save"),
+        );
+      }
+
+      return Result.Ok({ applied: true, entryCount: entries.length });
     }
 
-    const saved = await this.interviews.save(completed.unwrap());
-    if (saved.isErr()) {
-      return Result.Err(
-        new ServiceUnknownError(saved.unwrapErr().message, "InterviewRepository.save"),
-      );
+    if (interview.status === INTERVIEW_STATUS.COMPLETED) {
+      const recompleted = intermediate.recomplete(input.occurredAt, entries);
+      if (recompleted.isErr()) {
+        return Result.Ok({ applied: false, entryCount: 0 });
+      }
+
+      const saved = await this.interviews.save(recompleted.unwrap());
+      if (saved.isErr()) {
+        return Result.Err(
+          new ServiceUnknownError(saved.unwrapErr().message, "InterviewRepository.save"),
+        );
+      }
+
+      return Result.Ok({ applied: true, entryCount: entries.length });
     }
 
-    return Result.Ok({ applied: true, entryCount: entries.length });
+    if (interview.status === INTERVIEW_STATUS.EVALUATED) {
+      const recompleted = intermediate.recomplete(input.occurredAt, entries);
+      if (recompleted.isErr()) {
+        return Result.Ok({ applied: false, entryCount: 0 });
+      }
+
+      const reverted = intermediate.revertToCompleted();
+      if (reverted.isErr()) {
+        return Result.Err(reverted.unwrapErr() as ServiceError);
+      }
+
+      const next = reverted.unwrap().recomplete(input.occurredAt, entries);
+      if (next.isErr()) {
+        return Result.Ok({ applied: false, entryCount: 0 });
+      }
+
+      const invalidated = await this.reportInvalidation.invalidateStaleReport(next.unwrap());
+      if (invalidated.isErr()) {
+        return Result.Err(
+          new ServiceUnknownError(
+            invalidated.unwrapErr().message,
+            "InterviewReportInvalidationService.invalidateStaleReport",
+          ),
+        );
+      }
+
+      return Result.Ok({ applied: true, entryCount: entries.length });
+    }
+
+    return Result.Ok({ applied: false, entryCount: 0 });
   }
 }
 

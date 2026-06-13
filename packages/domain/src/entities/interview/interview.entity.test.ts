@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { Interview } from "./interview.entity.js";
 import type { InterviewSerialized } from "./interview.entity.js";
-import { InvalidInterviewStateTransitionError } from "./errors/interview.errors.js";
+import {
+  InvalidInterviewStateTransitionError,
+  TranscriptNotStrictlyBetterError,
+} from "./errors/interview.errors.js";
 import { INTERVIEW_STATUS } from "./interview-status.js";
 import { JobDescription } from "./value-objects/job-description.js";
 import { CandidateInfo } from "./value-objects/candidate-info.js";
@@ -119,6 +122,12 @@ const makeInProgressInterview = (): Interview => {
 
 const makeCompletedInterview = (): Interview => {
   const completedResult = makeInProgressInterview().complete(new Date("2025-06-01T09:50:00Z"), []);
+  expect(completedResult.isOk()).toBe(true);
+  return completedResult.unwrap();
+};
+
+const makeCompletedInterviewWithTranscript = (transcript: ReadonlyArray<TranscriptEntry>): Interview => {
+  const completedResult = makeInProgressInterview().complete(new Date("2025-06-01T09:50:00Z"), transcript);
   expect(completedResult.isOk()).toBe(true);
   return completedResult.unwrap();
 };
@@ -300,6 +309,64 @@ describe("Interview", () => {
     });
   });
 
+  describe("recomplete()", () => {
+    it("replaces the stored transcript only when incoming is strictly better", () => {
+      const stored = [
+        makeTranscriptEntry(SPEAKER.AGENT, "Tell me about yourself."),
+        makeTranscriptEntry(SPEAKER.CANDIDATE, "I build backend services."),
+      ];
+      const completed = makeCompletedInterviewWithTranscript(stored);
+      const incoming = [
+        ...stored,
+        makeTranscriptEntry(SPEAKER.AGENT, "What changed at your last role?"),
+      ];
+      const recompletedAt = new Date("2025-06-01T10:00:00Z");
+
+      const result = completed.recomplete(recompletedAt, incoming);
+
+      expect(result.isOk()).toBe(true);
+      const recompleted = result.unwrap();
+      expect(recompleted.status).toBe(INTERVIEW_STATUS.COMPLETED);
+      expect(recompleted.serialize().completedAt).toEqual(recompletedAt);
+      expect(recompleted.transcript).toEqual(incoming);
+      expect(completed.transcript).toEqual(stored);
+    });
+
+    it("rejects incoming transcript with equal non-empty entry count", () => {
+      const stored = [
+        makeTranscriptEntry(SPEAKER.AGENT, "Tell me about yourself."),
+        makeTranscriptEntry(SPEAKER.CANDIDATE, "I build backend services."),
+      ];
+      const completed = makeCompletedInterviewWithTranscript(stored);
+      const incoming = [
+        makeTranscriptEntry(SPEAKER.AGENT, "Different first question."),
+        makeTranscriptEntry(SPEAKER.CANDIDATE, "Different answer."),
+      ];
+
+      const result = completed.recomplete(new Date("2025-06-01T10:00:00Z"), incoming);
+
+      expect(result.isErr()).toBe(true);
+      expect(result.unwrapErr()).toBeInstanceOf(TranscriptNotStrictlyBetterError);
+    });
+
+    it("moves an EVALUATED interview back to COMPLETED when a strictly better transcript arrives", () => {
+      const evaluated = makeCompletedInterviewWithTranscript([
+        makeTranscriptEntry(SPEAKER.AGENT, "Tell me about yourself."),
+      ]).markEvaluated("report-uuid-001");
+      expect(evaluated.isOk()).toBe(true);
+      const incoming = [
+        makeTranscriptEntry(SPEAKER.AGENT, "Tell me about yourself."),
+        makeTranscriptEntry(SPEAKER.CANDIDATE, "I build backend services."),
+      ];
+
+      const result = evaluated.unwrap().recomplete(new Date("2025-06-01T10:00:00Z"), incoming);
+
+      expect(result.isOk()).toBe(true);
+      expect(result.unwrap().status).toBe(INTERVIEW_STATUS.COMPLETED);
+      expect(result.unwrap().serialize().reportId).toBe("report-uuid-001");
+    });
+  });
+
   describe("appendTranscriptEntry()", () => {
     it("succeeds when IN_PROGRESS and returns a new instance with the entry appended", () => {
       const inProgress = makeInProgressInterview();
@@ -468,6 +535,29 @@ describe("Interview", () => {
     });
   });
 
+  describe("fail()", () => {
+    it("succeeds from IN_PROGRESS, records the reason, and returns a new FAILED instance", () => {
+      const inProgress = makeInProgressInterview();
+      const result = inProgress.fail("ElevenLabs transcript could not be recovered");
+
+      expect(result.isOk()).toBe(true);
+      const failed = result.unwrap();
+      expect(failed).not.toBe(inProgress);
+      expect(failed.status).toBe(INTERVIEW_STATUS.FAILED);
+      expect(failed.serialize().notes).toHaveLength(1);
+      expect(failed.serialize().notes[0]?.note).toBe("[failed] ElevenLabs transcript could not be recovered");
+      expect(inProgress.status).toBe(INTERVIEW_STATUS.IN_PROGRESS);
+      expect(inProgress.serialize().notes).toEqual([]);
+    });
+
+    it("fails from COMPLETED state with InvalidInterviewStateTransitionError", () => {
+      const result = makeCompletedInterview().fail("Too late to fail");
+
+      expect(result.isErr()).toBe(true);
+      expect(result.unwrapErr()).toBeInstanceOf(InvalidInterviewStateTransitionError);
+    });
+  });
+
   describe("markEvaluated()", () => {
     it("succeeds from COMPLETED state and attaches reportId", () => {
       const interview = makeInterview();
@@ -502,6 +592,27 @@ describe("Interview", () => {
       const evaluated = evaluatedResult.unwrap();
 
       const result = evaluated.markEvaluated("another-report");
+      expect(result.isErr()).toBe(true);
+      expect(result.unwrapErr()).toBeInstanceOf(InvalidInterviewStateTransitionError);
+    });
+  });
+
+  describe("revertToCompleted()", () => {
+    it("reverts EVALUATED to COMPLETED and clears reportId", () => {
+      const evaluated = makeEvaluatedInterview();
+
+      const result = evaluated.revertToCompleted();
+
+      expect(result.isOk()).toBe(true);
+      const reverted = result.unwrap();
+      expect(reverted.status).toBe(INTERVIEW_STATUS.COMPLETED);
+      expect(reverted.serialize().reportId).toBeNull();
+      expect(evaluated.serialize().reportId).toBe("report-uuid-001");
+    });
+
+    it("fails from COMPLETED state with InvalidInterviewStateTransitionError", () => {
+      const result = makeCompletedInterview().revertToCompleted();
+
       expect(result.isErr()).toBe(true);
       expect(result.unwrapErr()).toBeInstanceOf(InvalidInterviewStateTransitionError);
     });
@@ -668,6 +779,17 @@ describe("Interview", () => {
       const restored = Interview.fromSerialized(scoreResult.unwrap().serialize());
       expect(restored.serialize().notes).toEqual([note.serialize()]);
       expect(restored.serialize().internalScores).toEqual([score.serialize()]);
+    });
+
+    it("round-trips a FAILED interview with its failure note", () => {
+      const failedResult = makeInProgressInterview().fail("Provider failure");
+      expect(failedResult.isOk()).toBe(true);
+      const serialized = failedResult.unwrap().serialize();
+
+      const restored = Interview.fromSerialized(serialized);
+
+      expect(restored.serialize().status).toBe(INTERVIEW_STATUS.FAILED);
+      expect(restored.serialize().notes).toEqual(serialized.notes);
     });
   });
 });

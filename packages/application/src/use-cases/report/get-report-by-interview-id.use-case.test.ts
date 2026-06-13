@@ -37,6 +37,7 @@ const makeRepo = (overrides: Partial<IReportRepository> = {}): IReportRepository
   save: vi.fn(),
   findById: vi.fn(),
   findByInterviewId: vi.fn(),
+  deleteByInterviewId: vi.fn(),
   ...overrides,
 });
 

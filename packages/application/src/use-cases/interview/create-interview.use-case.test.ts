@@ -50,6 +50,7 @@ describe("[Integration] CreateInterviewUseCase", () => {
         save: saveFn,
         findById: vi.fn(),
         findByElevenLabsSessionId: vi.fn(),
+        findStuckInProgress: vi.fn(),
         listByRecruiter: vi.fn(),
         delete: vi.fn(),
       };
@@ -74,6 +75,7 @@ describe("[Integration] CreateInterviewUseCase", () => {
         }),
         findById: vi.fn(),
         findByElevenLabsSessionId: vi.fn(),
+        findStuckInProgress: vi.fn(),
         listByRecruiter: vi.fn(),
         delete: vi.fn(),
       };
@@ -94,6 +96,7 @@ describe("[Integration] CreateInterviewUseCase", () => {
         }),
         findById: vi.fn(),
         findByElevenLabsSessionId: vi.fn(),
+        findStuckInProgress: vi.fn(),
         listByRecruiter: vi.fn(),
         delete: vi.fn(),
       };
@@ -112,6 +115,7 @@ describe("[Integration] CreateInterviewUseCase", () => {
         save: saveFn,
         findById: vi.fn(),
         findByElevenLabsSessionId: vi.fn(),
+        findStuckInProgress: vi.fn(),
         listByRecruiter: vi.fn(),
         delete: vi.fn(),
       };
@@ -133,6 +137,7 @@ describe("[Integration] CreateInterviewUseCase", () => {
         save: saveFn,
         findById: vi.fn(),
         findByElevenLabsSessionId: vi.fn(),
+        findStuckInProgress: vi.fn(),
         listByRecruiter: vi.fn(),
         delete: vi.fn(),
       };
@@ -155,6 +160,7 @@ describe("[Integration] CreateInterviewUseCase", () => {
         save: vi.fn().mockResolvedValue(Result.Err(new Error("DB connection lost"))),
         findById: vi.fn(),
         findByElevenLabsSessionId: vi.fn(),
+        findStuckInProgress: vi.fn(),
         listByRecruiter: vi.fn(),
         delete: vi.fn(),
       };
@@ -174,6 +180,7 @@ describe("[Integration] CreateInterviewUseCase", () => {
         save: vi.fn().mockResolvedValue(Result.Err(new Error("Network failure"))),
         findById: vi.fn(),
         findByElevenLabsSessionId: vi.fn(),
+        findStuckInProgress: vi.fn(),
         listByRecruiter: vi.fn(),
         delete: vi.fn(),
       };
@@ -197,6 +204,7 @@ describe("[Integration] CreateInterviewUseCase", () => {
         save: vi.fn(),
         findById: vi.fn(),
         findByElevenLabsSessionId: vi.fn(),
+        findStuckInProgress: vi.fn(),
         listByRecruiter: vi.fn(),
         delete: vi.fn(),
       };

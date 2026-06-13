@@ -1,5 +1,5 @@
 import { Option, Result } from "@carbonteq/fp";
-import { eq } from "drizzle-orm";
+import { and, eq, lt } from "drizzle-orm";
 import {
   Interview,
   type IInterviewRepository,
@@ -169,6 +169,19 @@ export class DrizzleInterviewRepository implements IInterviewRepository {
           ? Option.None
           : Option.Some(Interview.fromSerialized(rowToSerialized(rows[0]!))),
       )
+      .toPromise();
+  }
+
+  async findStuckInProgress(cutoff: Date): Promise<Result<ReadonlyArray<Interview>, Error>> {
+    return Result.tryAsyncCatch(
+      () =>
+        this.db
+          .select()
+          .from(interviews)
+          .where(and(eq(interviews.status, "IN_PROGRESS"), lt(interviews.startedAt, cutoff))),
+      translatePgError("InterviewRepository.findStuckInProgress"),
+    )
+      .map((rows) => rows.map((row) => Interview.fromSerialized(rowToSerialized(row))))
       .toPromise();
   }
 

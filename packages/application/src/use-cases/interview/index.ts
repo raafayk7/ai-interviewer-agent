@@ -56,3 +56,8 @@ export {
   type PostCallTranscriptEntry,
   type PostCallToolResult,
 } from "./persist-completed-transcript.use-case.js";
+export {
+  ReconcileStuckInterviewsUseCase,
+  type ReconcileStuckInterviewsInput,
+  type ReconcileStuckInterviewsOutput,
+} from "./reconcile-stuck-interviews.use-case.js";

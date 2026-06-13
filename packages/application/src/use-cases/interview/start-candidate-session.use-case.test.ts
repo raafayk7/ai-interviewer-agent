@@ -9,6 +9,7 @@ import {
   InvalidInterviewInputError,
   JobDescription,
   PlannedTopic,
+  SessionAlreadyActiveError,
   TOPIC_PRIORITY,
   type IInterviewRepository,
 } from "@repo/domain";
@@ -105,6 +106,12 @@ const makeInProgressInterview = (sessionId = "conv-prior-000"): Interview => {
   return bound.unwrap();
 };
 
+const makeInProgressInterviewWithoutSession = (): Interview => {
+  const started = makeScheduledInterview().start(now);
+  expect(started.isOk()).toBe(true);
+  return started.unwrap();
+};
+
 const makeRepo = (
   interview: Interview | null,
   overrides: Partial<IInterviewRepository> = {},
@@ -116,6 +123,7 @@ const makeRepo = (
   findByElevenLabsSessionId: vi.fn().mockResolvedValue(
     Result.Ok(interview === null ? Option.None : Option.Some(interview)),
   ),
+  findStuckInProgress: vi.fn().mockResolvedValue(Result.Ok([])),
   listByRecruiter: vi.fn(),
   delete: vi.fn(),
   ...overrides,
@@ -193,8 +201,22 @@ describe("[Integration] StartCandidateSessionUseCase", () => {
   });
 
   describe("execute() — reconnect path (already IN_PROGRESS)", () => {
-    it("returns the envelope without erroring and re-binds the new conversationId", async () => {
+    it("returns SessionAlreadyActiveError and does not issue a signed URL when a session is already bound", async () => {
       const interview = makeInProgressInterview("conv-prior-000");
+      const repo = makeRepo(interview);
+      const agent = makeAgent();
+      const useCase = new StartCandidateSessionUseCase(repo, agent);
+
+      const result = await useCase.execute({ interviewId: interview.id, agentId: "agent-001" });
+
+      expect(result.isErr()).toBe(true);
+      expect(result.unwrapErr()).toBeInstanceOf(SessionAlreadyActiveError);
+      expect(agent.issueSignedUrl).not.toHaveBeenCalled();
+      expect(repo.save).not.toHaveBeenCalled();
+    });
+
+    it("allows a first-connect retry when IN_PROGRESS has no bound session id", async () => {
+      const interview = makeInProgressInterviewWithoutSession();
       const repo = makeRepo(interview);
       const useCase = new StartCandidateSessionUseCase(repo, makeAgent());
 
@@ -204,24 +226,10 @@ describe("[Integration] StartCandidateSessionUseCase", () => {
       const output = result.unwrap();
       expect(output.signedUrl).toBe("https://signed.example/session");
       expect(output.dynamicVariables.interview_id).toBe(interview.id);
-
-      // Re-issued single-use signed URL binds the new conversationId; save once.
       expect(repo.save).toHaveBeenCalledTimes(1);
       const saved = vi.mocked(repo.save).mock.calls[0]?.[0];
       expect(saved?.status).toBe(INTERVIEW_STATUS.IN_PROGRESS);
       expect(saved?.serialize().elevenLabsSessionId).toBe("conv-abc-123");
-    });
-
-    it("does not re-save when the same conversationId is already bound (idempotent)", async () => {
-      const interview = makeInProgressInterview("conv-abc-123");
-      const repo = makeRepo(interview);
-      const useCase = new StartCandidateSessionUseCase(repo, makeAgent());
-
-      const result = await useCase.execute({ interviewId: interview.id, agentId: "agent-001" });
-
-      expect(result.isOk()).toBe(true);
-      // bindElevenLabsSession returns the same reference and start() is skipped — no change to persist.
-      expect(repo.save).not.toHaveBeenCalled();
     });
   });
 

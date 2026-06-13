@@ -19,6 +19,10 @@ describe("InterviewStatusPolicy", () => {
       expect(InterviewStatusPolicy.canTransition(INTERVIEW_STATUS.IN_PROGRESS, INTERVIEW_STATUS.CANCELLED)).toBe(true);
     });
 
+    it("allows IN_PROGRESS → FAILED", () => {
+      expect(InterviewStatusPolicy.canTransition(INTERVIEW_STATUS.IN_PROGRESS, INTERVIEW_STATUS.FAILED)).toBe(true);
+    });
+
     it("allows COMPLETED → EVALUATED", () => {
       expect(InterviewStatusPolicy.canTransition(INTERVIEW_STATUS.COMPLETED, INTERVIEW_STATUS.EVALUATED)).toBe(true);
     });
@@ -46,6 +50,10 @@ describe("InterviewStatusPolicy", () => {
     it("disallows CANCELLED → CREATED", () => {
       expect(InterviewStatusPolicy.canTransition(INTERVIEW_STATUS.CANCELLED, INTERVIEW_STATUS.CREATED)).toBe(false);
     });
+
+    it("disallows FAILED → COMPLETED", () => {
+      expect(InterviewStatusPolicy.canTransition(INTERVIEW_STATUS.FAILED, INTERVIEW_STATUS.COMPLETED)).toBe(false);
+    });
   });
 
   describe("isTerminal()", () => {
@@ -55,6 +63,10 @@ describe("InterviewStatusPolicy", () => {
 
     it("returns true for CANCELLED", () => {
       expect(InterviewStatusPolicy.isTerminal(INTERVIEW_STATUS.CANCELLED)).toBe(true);
+    });
+
+    it("returns true for FAILED", () => {
+      expect(InterviewStatusPolicy.isTerminal(INTERVIEW_STATUS.FAILED)).toBe(true);
     });
 
     it("returns false for CREATED", () => {

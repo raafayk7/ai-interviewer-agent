@@ -201,6 +201,23 @@ describe("[Integration] DrizzleReportRepository", () => {
     expect(option.isNone()).toBe(true);
   });
 
+  it("deleteByInterviewId removes linked reports and is idempotent when none remain", async () => {
+    const interview = buildInterview();
+    await interviewRepo.save(interview);
+
+    const report = buildReport(interview.id);
+    await reportRepo.save(report);
+
+    const deleteResult = await reportRepo.deleteByInterviewId(interview.id);
+    expect(deleteResult.isOk()).toBe(true);
+
+    const rows = await db.select().from(reports);
+    expect(rows).toHaveLength(0);
+
+    const secondDeleteResult = await reportRepo.deleteByInterviewId(interview.id);
+    expect(secondDeleteResult.isOk()).toBe(true);
+  });
+
   it("JSONB round-trip preserves topicScores array with 3 entries and deep field equality", async () => {
     const interview = buildInterview();
     await interviewRepo.save(interview);

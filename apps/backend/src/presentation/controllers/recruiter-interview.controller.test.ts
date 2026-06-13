@@ -8,6 +8,7 @@ import {
 } from "@repo/application";
 import * as ApplicationModule from "@repo/application";
 import { buildApp, type BuildAppOptions } from "../../app.js";
+import { mapServiceErrorToHttp } from "../errors/http-error-mapper.js";
 import type { RecruiterInterviewControllerDeps } from "./recruiter-interview.controller.js";
 
 // ── fixtures ──────────────────────────────────────────────────────────────────
@@ -151,6 +152,12 @@ function makeDeps(overrides: Partial<RecruiterInterviewControllerDeps> = {}): Re
         Result.Ok({ interviewId: INTERVIEW_ID, status: "SCHEDULED" }),
       ),
     },
+    reconcileStuckInterviewsUseCase: {
+      execute: vi.fn().mockResolvedValue(
+        Result.Ok({ scanned: 2, completed: ["interview-1"], failed: ["interview-2"] }),
+      ),
+    },
+    reconcileThresholdMinutes: 90,
     candidateLink: {
       issue: vi.fn().mockReturnValue("token-abc"),
       defaultTtlSeconds: 604800,
@@ -313,6 +320,70 @@ describe("[Integration] RecruiterInterviewController — GET /interviews", () =>
     const response = await app.inject({ method: "GET", url: "/interviews" });
 
     expect(response.statusCode).toBe(500);
+  });
+});
+
+// ── POST /interviews/reconcile-stuck ─────────────────────────────────────────
+
+describe("[Integration] RecruiterInterviewController — POST /interviews/reconcile-stuck", () => {
+  let app: FastifyInstance;
+
+  afterEach(async () => {
+    await app?.close();
+  });
+
+  it("returns 200 with reconciliation summary and uses configured threshold", async () => {
+    const execute = vi.fn().mockResolvedValue(
+      Result.Ok({ scanned: 2, completed: ["interview-1"], failed: ["interview-2"] }),
+    );
+    const deps = makeDeps({
+      reconcileStuckInterviewsUseCase: { execute },
+      reconcileThresholdMinutes: 45,
+    });
+    app = await buildTestApp(deps);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/interviews/reconcile-stuck",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(execute).toHaveBeenCalledWith({ thresholdMinutes: 45 });
+    expect(response.json()).toEqual({
+      scanned: 2,
+      completed: ["interview-1"],
+      failed: ["interview-2"],
+    });
+  });
+
+  it("returns 401 when request is unauthenticated", async () => {
+    const deps = makeDeps();
+    app = await buildTestApp(deps, makeAuthDeps(null));
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/interviews/reconcile-stuck",
+    });
+
+    expect(response.statusCode).toBe(401);
+  });
+
+  it("maps a use-case error to the canonical HTTP status via mapServiceErrorToHttp", async () => {
+    const error = new ServiceUnknownError("DB failure", "InterviewRepository.findStuckInProgress");
+    const deps = makeDeps({
+      reconcileStuckInterviewsUseCase: {
+        execute: vi.fn().mockResolvedValue(Result.Err(error)),
+      },
+    });
+    app = await buildTestApp(deps);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/interviews/reconcile-stuck",
+    });
+
+    // The reconcile error path routes through sendError → mapServiceErrorToHttp (ADR-018).
+    expect(response.statusCode).toBe(mapServiceErrorToHttp(error).status);
   });
 });
 

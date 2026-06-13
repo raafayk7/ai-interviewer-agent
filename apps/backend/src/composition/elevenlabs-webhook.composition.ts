@@ -11,6 +11,7 @@ import {
   elevenLabsToolSecretVerifierFromEnv,
 } from "../infrastructure/auth/index.js";
 import type { Database } from "../infrastructure/persistence/db.js";
+import { DrizzleInterviewReportInvalidationService } from "../infrastructure/persistence/drizzle-interview-report-invalidation.service.js";
 import { DrizzleInterviewRepository } from "../infrastructure/repositories/drizzle-interview.repository.js";
 import type {
   InterviewIdLike,
@@ -42,13 +43,17 @@ export function buildElevenLabsWebhookDeps(
     options.db ??
     (require("../infrastructure/persistence/db.js") as typeof import("../infrastructure/persistence/db.js")).db;
   const interviews = new DrizzleInterviewRepository(db);
+  const reportInvalidation = new DrizzleInterviewReportInvalidationService(db);
 
   return {
     hmacVerifier: hmacVerifierResult.unwrap(),
     toolSecretVerifier: toolSecretVerifierResult.unwrap(),
     recordAgentNoteUseCase: new RecordAgentNoteUseCase(interviews),
     recordInternalScoreUseCase: new RecordInternalScoreUseCase(interviews),
-    persistCompletedTranscriptUseCase: new PersistCompletedTranscriptUseCase(interviews),
+    persistCompletedTranscriptUseCase: new PersistCompletedTranscriptUseCase(
+      interviews,
+      reportInvalidation,
+    ),
     interviewResolver: {
       async findByElevenLabsSessionId(elevenLabsSessionId: string) {
         const found = await interviews.findByElevenLabsSessionId(elevenLabsSessionId);

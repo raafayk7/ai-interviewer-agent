@@ -9,6 +9,8 @@ export interface IInterviewRepository {
 
   findByElevenLabsSessionId(sessionId: string): Promise<Result<Option<Interview>, Error>>;
 
+  findStuckInProgress(cutoff: Date): Promise<Result<ReadonlyArray<Interview>, Error>>;
+
   listByRecruiter(recruiterId: RecruiterId): Promise<Result<ReadonlyArray<Interview>, Error>>;
 
   delete(id: InterviewId): Promise<Result<void, Error>>;

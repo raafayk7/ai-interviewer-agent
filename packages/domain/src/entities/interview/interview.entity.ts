@@ -5,6 +5,7 @@ import { FileRef, type FileRefProps } from "../../shared/value-objects/index.js"
 import {
   InvalidInterviewStateTransitionError,
   InterviewPlanRequiredError,
+  TranscriptNotStrictlyBetterError,
 } from "./errors/interview.errors.js";
 import {
   INTERVIEW_STATUS,
@@ -154,6 +155,25 @@ export class Interview extends BaseEntity {
     );
   }
 
+  recomplete(
+    at: Date,
+    incoming: ReadonlyArray<TranscriptEntry>,
+  ): Result<Interview, TranscriptNotStrictlyBetterError> {
+    const incomingCount = countNonEmpty(incoming);
+    const storedCount = countNonEmpty(this.transcript);
+    if (incomingCount <= storedCount) {
+      return Result.Err(new TranscriptNotStrictlyBetterError(this.id, storedCount, incomingCount));
+    }
+
+    return Result.Ok(
+      this.withChanges({
+        status: INTERVIEW_STATUS.COMPLETED,
+        completedAt: Option.Some(at),
+        transcript: Object.freeze([...incoming]),
+      }),
+    );
+  }
+
   appendTranscriptEntry(entry: TranscriptEntry): Result<Interview, InvalidInterviewStateTransitionError> {
     if (this.status !== INTERVIEW_STATUS.IN_PROGRESS) {
       return Result.Err(new InvalidInterviewStateTransitionError(this.status, INTERVIEW_STATUS.IN_PROGRESS));
@@ -202,6 +222,36 @@ export class Interview extends BaseEntity {
       return Result.Err(new InvalidInterviewStateTransitionError(this.status, INTERVIEW_STATUS.EVALUATED));
     }
     return Result.Ok(this.withChanges({ status: INTERVIEW_STATUS.EVALUATED, reportId: Option.Some(reportId) }));
+  }
+
+  revertToCompleted(): Result<Interview, InvalidInterviewStateTransitionError> {
+    if (this.status !== INTERVIEW_STATUS.EVALUATED) {
+      return Result.Err(
+        new InvalidInterviewStateTransitionError(this.status, INTERVIEW_STATUS.COMPLETED),
+      );
+    }
+
+    return Result.Ok(
+      this.withChanges({ status: INTERVIEW_STATUS.COMPLETED, reportId: Option.None }),
+    );
+  }
+
+  fail(reason: string): Result<Interview, InvalidInterviewStateTransitionError> {
+    if (!InterviewStatusPolicy.canTransition(this.status, INTERVIEW_STATUS.FAILED)) {
+      return Result.Err(new InvalidInterviewStateTransitionError(this.status, INTERVIEW_STATUS.FAILED));
+    }
+
+    const normalizedReason = reason.trim().length > 0 ? reason.trim() : "No reason provided";
+    const noteResult = AgentNote.create({
+      note: `[failed] ${normalizedReason}`,
+      recordedAtTurn: 0,
+      recordedAt: new Date(),
+    });
+    const notes = noteResult.isOk()
+      ? Object.freeze([...this.notes, noteResult.unwrap()])
+      : this.notes;
+
+    return Result.Ok(this.withChanges({ status: INTERVIEW_STATUS.FAILED, notes }));
   }
 
   /** IN_PROGRESS → CANCELLED. */
@@ -303,4 +353,8 @@ export class Interview extends BaseEntity {
       new Date(),
     );
   }
+}
+
+function countNonEmpty(entries: ReadonlyArray<TranscriptEntry>): number {
+  return entries.filter((entry) => entry.text.trim().length > 0).length;
 }

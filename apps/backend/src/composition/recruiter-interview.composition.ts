@@ -7,6 +7,7 @@ import {
   GetReportByInterviewIdUseCase,
   IssueCandidateLinkUseCase,
   ListInterviewsByRecruiterUseCase,
+  ReconcileStuckInterviewsUseCase,
 } from "@repo/application";
 import type { Database } from "../infrastructure/persistence/db.js";
 import {
@@ -23,6 +24,10 @@ import {
   NullLangfusePromptClient,
   type ILangfusePromptClient,
 } from "../infrastructure/prompts/langfuse-prompt-client.js";
+import {
+  conversationalClientFromEnv,
+  ElevenLabsConversationalService,
+} from "../infrastructure/services/elevenlabs/index.js";
 import type {
   CandidateLinkIssuer,
   RecruiterInterviewControllerDeps,
@@ -45,6 +50,11 @@ export function buildRecruiterInterviewDeps(
     throw new Error(`Boot failed: ${geminiHandleResult.unwrapErr().message}`);
   }
 
+  const conversationalHandleResult = conversationalClientFromEnv(env);
+  if (conversationalHandleResult.isErr()) {
+    throw new Error(`Boot failed: ${conversationalHandleResult.unwrapErr().message}`);
+  }
+
   const promptClientResult = langfusePromptClientFromEnv(env);
   const promptClient: ILangfusePromptClient = promptClientResult.isOk()
     ? promptClientResult.unwrap()
@@ -57,6 +67,7 @@ export function buildRecruiterInterviewDeps(
   const interviews = new DrizzleInterviewRepository(db);
   const reports = new DrizzleReportRepository(db);
   const geminiHandle = geminiHandleResult.unwrap();
+  const conversational = new ElevenLabsConversationalService(conversationalHandleResult.unwrap());
 
   return {
     createInterviewUseCase: new CreateInterviewUseCase(interviews),
@@ -73,7 +84,20 @@ export function buildRecruiterInterviewDeps(
     }),
     getReportByInterviewIdUseCase: new GetReportByInterviewIdUseCase(reports),
     issueCandidateLinkUseCase: new IssueCandidateLinkUseCase(interviews),
+    reconcileStuckInterviewsUseCase: new ReconcileStuckInterviewsUseCase(
+      interviews,
+      conversational,
+    ),
+    reconcileThresholdMinutes: thresholdMinutesFromEnv(env),
     candidateLink: options.candidateLink,
     publicBaseUrl: env["CANDIDATE_PUBLIC_BASE_URL"] ?? env["BETTER_AUTH_URL"] ?? "http://localhost:3000",
   };
+}
+
+function thresholdMinutesFromEnv(env: NodeJS.ProcessEnv): number {
+  const raw = env["RECONCILE_THRESHOLD_MINUTES"];
+  if (!raw) return 90;
+
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 90;
 }
