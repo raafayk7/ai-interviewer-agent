@@ -8,6 +8,14 @@ export interface AuthConfig {
   readonly baseUrl: string;
   readonly db: Database;
   readonly trustedOrigins: readonly string[];
+  /**
+   * When true (cross-site deployment — frontend and backend on different
+   * registrable domains, e.g. *.vercel.app ↔ *.onrender.com), issue
+   * SameSite=None; Secure; Partitioned session cookies so the browser sends them
+   * on cross-site requests. Default false (local dev: same-site localhost over
+   * http, where Lax is correct and Secure would block the cookie).
+   */
+  readonly crossSiteCookies?: boolean;
 }
 
 export function createAuth(config: AuthConfig) {
@@ -30,6 +38,17 @@ export function createAuth(config: AuthConfig) {
     },
     socialProviders: {},
     plugins: [],
+    ...(config.crossSiteCookies
+      ? {
+          advanced: {
+            defaultCookieAttributes: {
+              sameSite: "none",
+              secure: true,
+              partitioned: true,
+            },
+          },
+        }
+      : {}),
   });
 }
 
