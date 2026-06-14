@@ -1,0 +1,78 @@
+name: CI
+
+# Quality gate: type-check, lint, and test on every PR and on pushes to the
+# integration branches. Deploys are handled natively by Render (backend) and
+# Vercel (web) on push to `dev`; this workflow only guards correctness.
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: type-check · lint · test
+    runs-on: ubuntu-latest
+
+    # Optional Vercel Remote Cache: set the TURBO_TOKEN secret + TURBO_TEAM var to
+    # share the turbo cache across runs. Harmless (ignored) when unset.
+    env:
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+      TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+
+    # Postgres for the backend Drizzle integration tests. The test-db helper
+    # auto-runs migrations on first connect, so only the container is needed.
+    # The S3 (MinIO) integration tests skip cleanly when S3_TEST_ENDPOINT is unset.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: ai_interviewer_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test -d ai_interviewer_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Restore turbo cache
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
+            turbo-${{ runner.os }}-
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Type-check & lint
+        run: pnpm turbo run check-types lint
+
+      - name: Test
+        # `test` dependsOn ^build, so turbo builds @repo/domain + @repo/application
+        # (consumed as dist) before the backend suite runs.
+        run: pnpm turbo run test
+        env:
+          TEST_DATABASE_URL: postgres://test:test@localhost:5432/ai_interviewer_test
