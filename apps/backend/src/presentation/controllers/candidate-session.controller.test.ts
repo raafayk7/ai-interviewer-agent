@@ -8,7 +8,6 @@ import {
 } from "@repo/domain";
 import {
   CandidateSessionController,
-  type CandidateLinkVerifier,
   type CandidateSessionControllerDeps,
 } from "./candidate-session.controller.js";
 import { mapServiceErrorToHttp } from "../errors/http-error-mapper.js";
@@ -284,7 +283,7 @@ function buildFakeProvider(): { spans: SpanCapture[]; provider: import("@opentel
           } as unknown as import("@opentelemetry/api").Span;
           return fakeSpan;
         },
-        startActiveSpan: (..._args: unknown[]) => undefined,
+        startActiveSpan: () => undefined,
       } as unknown as import("@opentelemetry/api").Tracer;
     },
   };
@@ -294,7 +293,6 @@ function buildFakeProvider(): { spans: SpanCapture[]; provider: import("@opentel
 describe("OTel spans (ADR-032) — D1 interview.session.conversational", () => {
   let spans: SpanCapture[];
   let controller: import("./candidate-session.controller.js").CandidateSessionController;
-  let makeDepsDynamic: typeof makeDeps;
 
   beforeEach(async () => {
     const { spans: s, provider } = buildFakeProvider();
@@ -321,23 +319,6 @@ describe("OTel spans (ADR-032) — D1 interview.session.conversational", () => {
           }),
         ),
       },
-    });
-
-    makeDepsDynamic = (overrides = {}) => ({
-      agentId: "agent-001",
-      candidateLink: {
-        verify: vi.fn().mockReturnValue(Result.Ok({ interviewId: "interview-001" })),
-      },
-      startCandidateSessionUseCase: {
-        execute: vi.fn().mockResolvedValue(
-          Result.Ok({
-            signedUrl: "https://signed.example/session",
-            overrides: { agent: { prompt: { prompt: "You are an interviewer..." } } },
-            dynamicVariables: { candidate_name: "Jane", job_title: "Engineer", target_duration_minutes: "15", interview_id: "interview-001" },
-          }),
-        ),
-      },
-      ...overrides,
     });
   });
 

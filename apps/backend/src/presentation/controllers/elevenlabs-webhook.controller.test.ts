@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ServiceError } from "@repo/application";
 import {
   ElevenLabsWebhookController,
-  type ElevenLabsWebhookControllerDeps,
 } from "./elevenlabs-webhook.controller.js";
 import { mapServiceErrorToHttp } from "../errors/http-error-mapper.js";
 
@@ -487,7 +486,7 @@ function buildFakeProvider(): {
           } as unknown as import("@opentelemetry/api").Span;
           return fakeSpan;
         },
-        startActiveSpan: (..._args: unknown[]) => undefined,
+        startActiveSpan: () => undefined,
       } as unknown as import("@opentelemetry/api").Tracer;
     },
   };

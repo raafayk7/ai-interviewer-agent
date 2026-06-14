@@ -50,6 +50,7 @@
     "@types/ws": "^8.5.13",
     "drizzle-kit": "^0.31.1",
     "eslint": "^9.39.1",
+    "globals": "^16.5.0",
     "tsx": "^4.19.4",
     "typescript": "5.9.2",
     "vitest": "^3.2.1"
