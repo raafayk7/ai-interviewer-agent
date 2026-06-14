@@ -53,7 +53,7 @@ the `dev` branch. CI gate runs on every PR/push via `.github/workflows/ci.yml`.
 | Branch | `dev` |
 | Region | Singapore (closest free to the Tokyo DB) |
 | **Root Directory** | **(leave blank — repo root)** |
-| **Build Command** | `corepack enable && pnpm install --frozen-lockfile && pnpm turbo run build --filter=backend && pnpm --filter backend exec drizzle-kit migrate` |
+| **Build Command** | `corepack enable && NODE_ENV=development pnpm install --frozen-lockfile && pnpm turbo run build --filter=backend && pnpm --filter backend exec drizzle-kit migrate` |
 | **Start Command** | `pnpm --filter backend start` |
 | Health Check Path | `/health` |
 
@@ -161,6 +161,7 @@ when `S3_TEST_ENDPOINT` is unset. The gate must be green before merging to `dev`
 - **Cold starts.** Render free spins down after 15min idle; the first request (and the post-call webhook) waits ~30–60s. ElevenLabs retries webhooks, so a cold-start webhook still lands. Warm the service before a demo.
 - **In-memory rate limiting.** Correct for the single Render instance (ADR-037). Scaling to >1 instance requires a shared Redis store.
 - **Legacy Deepgram boot vars.** The pre-ElevenLabs "sandbox" voice path is still compiled and constructs Deepgram/EL-TTS clients at boot, so `DEEPGRAM_API_KEY` and the `ELEVENLABS_VOICE_ID/MODEL_ID/OUTPUT_FORMAT` config must be present or the process won't start. The WebSocket route they back is dead (live voice is browser↔ElevenLabs). Remove the sandbox to drop these.
+- **`NODE_ENV=production` is intentional on staging** — it's a runtime *mode*, not an environment name. `cors-env.ts` / `auth-env.ts` only require (and use) the real CORS + better-auth origins when `NODE_ENV === "production"`; any other value defaults them to `http://localhost:3000`, which breaks the deployed frontend. To distinguish staging from prod in code or observability, use a separate var (e.g. `APP_ENV`), never `NODE_ENV`. (The build install runs with `NODE_ENV=development` so pnpm keeps devDeps; runtime stays production.)
 - **PG 17.** Supabase is Postgres 17; CI/local test DBs are aligned to 17. Our migrations are standard DDL — no version-specific concerns.
 - **Supabase free tier** pauses the DB after 7 days idle (a request wakes it).
 

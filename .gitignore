@@ -47,6 +47,7 @@ reference-agents-backend/
 reference-skills-backend/
 
 local-storage/
+envs/
 
 # Playwright artifacts
 apps/web/test-results/
