@@ -10,7 +10,13 @@ import {
   type FileRef,
 } from "@/types";
 
-const BASE = env.NEXT_PUBLIC_API_URL;
+// Client → same-origin `/be` proxy so the session cookie is sent first-party
+// (both upload + extract are authenticated); server → backend directly. Mirrors
+// _request.ts — every authenticated path must route through the proxy.
+const BASE =
+  typeof window === "undefined"
+    ? env.NEXT_PUBLIC_API_URL
+    : `${window.location.origin}/be`;
 
 export async function uploadDocuments(
   jdFile: File,
