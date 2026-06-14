@@ -9,9 +9,12 @@
 import { createAuthClient } from "better-auth/react";
 import { env } from "./env";
 
+// Direct by default (same-site app-dev ↔ api-dev → first-party cookie). When
+// NEXT_PUBLIC_USE_BE_PROXY=true, client auth calls hit same-origin (window.origin)
+// and next.config rewrites /api/auth/* to the backend. Server always direct.
 const _raw: any = createAuthClient({
   baseURL:
-    typeof window === "undefined"
+    typeof window === "undefined" || env.NEXT_PUBLIC_USE_BE_PROXY !== "true"
       ? env.NEXT_PUBLIC_API_URL
       : window.location.origin,
 });
