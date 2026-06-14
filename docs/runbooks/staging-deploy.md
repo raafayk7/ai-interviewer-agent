@@ -27,9 +27,9 @@ the `dev` branch. CI gate runs on every PR/push via `.github/workflows/ci.yml`.
 
 ## Step 1 — Supabase
 
-1. **Connection string (`DATABASE_URL`).** Dashboard → Connect → **Session pooler** (IPv4, port `5432`). Use this — **not** the Direct/IPv6 string (Render cannot reach IPv6). Session mode supports DDL + prepared statements, so it serves both runtime and `drizzle-kit migrate`.
+1. **Connection string (`DATABASE_URL`).** Dashboard → Connect → **Session pooler** (IPv4, port `5432`). **Copy the exact host from the dashboard** — the `aws-<N>` pooler-instance number varies per project (this one is `aws-1`, not `aws-0`), and a wrong instance gives a misleading `tenant/user … not found` error. Use the pooler, **not** the Direct/IPv6 host (Render cannot reach IPv6). **Append `?sslmode=require`** — Supabase requires SSL and `postgres()` does not enable it from a bare URL. Session mode supports DDL + prepared statements, so this one URL serves both runtime and `drizzle-kit migrate`.
    ```
-   postgresql://postgres.hdwsevhindcblvxkdlqp:<DB_PASSWORD>@aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres
+   postgresql://postgres.hdwsevhindcblvxkdlqp:<DB_PASSWORD>@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres?sslmode=require
    ```
 2. **Storage S3 keys.** Dashboard → Storage → **S3 Access Keys** → New access key. Gives `S3_ACCESS_KEY_ID` + `S3_SECRET_ACCESS_KEY`. Endpoint and region:
    ```
