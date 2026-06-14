@@ -46,10 +46,13 @@ export function buildAuthDeps(options: AuthCompositionOptions = {}): AuthDeps {
       baseUrl: betterAuthUrl,
       db,
       trustedOrigins,
-      // Frontend (Vercel) and backend (Render) are different registrable domains
-      // in deployed envs → the session cookie must be SameSite=None to survive
-      // cross-site requests. Gated on production so local dev keeps Lax over http.
-      crossSiteCookies: env["NODE_ENV"] === "production",
+      // Frontend (app-dev) and backend (api-dev) are subdomains of one site
+      // (sift-ai.space). Scope the session cookie to the parent domain so it is
+      // shared across both — required because the frontend's server-side auth gate
+      // forwards the browser's inbound cookie to the backend's get-session. Set
+      // AUTH_COOKIE_DOMAIN (e.g. ".sift-ai.space") in deployed envs; unset locally
+      // so dev keeps a host-only Lax cookie over http.
+      cookieDomain: env["AUTH_COOKIE_DOMAIN"],
     }),
     candidateLink: candidateLink.unwrap(),
   };

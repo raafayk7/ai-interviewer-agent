@@ -9,13 +9,17 @@ export interface AuthConfig {
   readonly db: Database;
   readonly trustedOrigins: readonly string[];
   /**
-   * When true (cross-site deployment — frontend and backend on different
-   * registrable domains, e.g. *.vercel.app ↔ *.onrender.com), issue
-   * SameSite=None; Secure; Partitioned session cookies so the browser sends them
-   * on cross-site requests. Default false (local dev: same-site localhost over
-   * http, where Lax is correct and Secure would block the cookie).
+   * Parent domain for cross-subdomain session cookies, e.g. ".sift-ai.space".
+   * Set it when the frontend and backend are subdomains of one site
+   * (app-dev.sift-ai.space ↔ api-dev.sift-ai.space): better-auth then scopes the
+   * session cookie to this domain — `__Secure-…; Domain=.sift-ai.space;
+   * SameSite=Lax; Secure` — so it is shared across both subdomains. That is
+   * required because the frontend's server-side auth gate forwards the browser's
+   * inbound cookie to the backend's get-session; a host-only cookie on the API
+   * subdomain would be invisible to the frontend's SSR. Leave unset for local dev
+   * (host-only Lax over http, where Secure would block the cookie).
    */
-  readonly crossSiteCookies?: boolean;
+  readonly cookieDomain?: string;
 }
 
 export function createAuth(config: AuthConfig) {
@@ -38,13 +42,12 @@ export function createAuth(config: AuthConfig) {
     },
     socialProviders: {},
     plugins: [],
-    ...(config.crossSiteCookies
+    ...(config.cookieDomain
       ? {
           advanced: {
-            defaultCookieAttributes: {
-              sameSite: "none",
-              secure: true,
-              partitioned: true,
+            crossSubDomainCookies: {
+              enabled: true,
+              domain: config.cookieDomain,
             },
           },
         }
