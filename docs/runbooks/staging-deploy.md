@@ -10,8 +10,8 @@ the `dev` branch. CI gate runs on every PR/push via `.github/workflows/ci.yml`.
 
 | Component | Host | Notes |
 |---|---|---|
-| Web (Next.js) | Vercel | Root Directory `apps/web`; deploys on `dev`. |
-| Backend (Fastify) | Render free | Single instance; cold-starts after 15min idle. Blueprint: `render.yaml`. |
+| Web (Next.js) | Vercel → `app-dev.sift-ai.space` | Root Directory `apps/web`; deploys on `dev`. |
+| Backend (Fastify) | Render free → `api-dev.sift-ai.space` | Single instance; cold-starts after 15min idle. Blueprint: `render.yaml`. |
 | Postgres | Supabase `ai-interviewer-agent-staging` (`hdwsevhindcblvxkdlqp`), PG 17, ap-northeast-1 | Drizzle migrations via `drizzle-kit migrate`. |
 | Object storage | Supabase Storage bucket `ai-interviewer-agent-staging` (private) | S3-compatible adapter (ADR-036), `FILE_STORAGE_DRIVER=s3`. |
 | Voice | ElevenLabs Conversational AI | One static agent + per-session overrides (ADR-033); webhooks → Render (ADR-034). |
@@ -22,6 +22,46 @@ the `dev` branch. CI gate runs on every PR/push via `.github/workflows/ci.yml`.
 - Accounts: Vercel, Render, Supabase, ElevenLabs, Google AI Studio (Gemini), Langfuse — all linked to the GitHub repo `raafayk7/ai-interviewer-agent`.
 - The Supabase project + bucket already exist (created 2026-06-13).
 - Generate fresh secrets where needed: `openssl rand -base64 32`.
+
+---
+
+## Custom domains (sift-ai.space)
+
+Staging runs on a **custom domain** so the frontend and backend are **same-site**
+(both subdomains of `sift-ai.space`). This is the whole reason for the domain: the
+platform defaults (`*.vercel.app` ↔ `*.onrender.com`) are **cross-site** — both
+suffixes are on the Public Suffix List — which forced a same-origin Vercel `/be`
+rewrite for first-party cookies, and that rewrite's **~30s edge timeout** 502'd
+(`ROUTER_EXTERNAL_TARGET_ERROR`) the slow `gemini-2.5-pro` ops (document extract,
+interview plan, evaluation). Same-site lets the frontend call the backend
+**directly** — no proxy hop, no timeout, first-party cookie.
+
+| Subdomain | Points at | How |
+|---|---|---|
+| `app-dev.sift-ai.space` | Vercel project `ai-interviewer-agent-web` | Vercel → project → Domains → add (DNS auto; domain was bought via Vercel) |
+| `api-dev.sift-ai.space` | Render backend | Render → service → Settings → **Custom Domains** → add → it shows a CNAME target |
+
+Steps:
+1. Render → service → Settings → **Custom Domains** → add `api-dev.sift-ai.space`; note the CNAME target (`ai-interviewer-agent-backend.onrender.com`).
+2. DNS is **Vercel-managed** (domain bought via Vercel): Vercel → **Domains** → `sift-ai.space` → add `CNAME` `api-dev → ai-interviewer-agent-backend.onrender.com` (or `vercel dns add sift-ai.space api-dev CNAME ai-interviewer-agent-backend.onrender.com`). It's plain Vercel DNS — no Cloudflare orange-cloud to disable.
+3. Wait for TLS (Render: "Certificate Issued"; Vercel: green). Verify: `dig +short api-dev.sift-ai.space` chains to `…onrender.com`.
+
+**Direct-vs-proxy toggle.** The frontend calls the backend directly by default; the
+`/be` same-origin proxy is **kept** behind `NEXT_PUBLIC_USE_BE_PROXY` (unset/`false`
+= direct; `true` = route via the `next.config.js` `/be` rewrite — for self-hosted
+Docker, where `next start` has no edge timeout and same-origin avoids `NEXT_PUBLIC`
+build-time inlining). On Vercel staging leave it unset/`false`. (`_request.ts`,
+`document.service.ts`, `auth-client.ts`, `env.ts`.)
+
+**Cross-subdomain session cookie (required — non-obvious).** Calling direct means
+the session cookie is set on `api-dev`. The frontend's server-side auth gate
+(`apps/web/src/lib/auth.ts`) forwards the browser's *inbound* cookie to
+`api-dev/api/auth/get-session`; a **host-only** cookie on `api-dev` is invisible to
+a request hitting `app-dev`, so login succeeds (200 + `Set-Cookie`) but `/dashboard`
+bounces back to `/login`. Fix: set **`AUTH_COOKIE_DOMAIN=.sift-ai.space`** on Render
+→ better-auth issues `__Secure-…; Domain=.sift-ai.space; SameSite=Lax; Secure`,
+shared across both subdomains (`auth.ts` `advanced.crossSubDomainCookies`). Leave
+unset locally (host-only Lax over http).
 
 ---
 
@@ -38,10 +78,16 @@ the `dev` branch. CI gate runs on every PR/push via `.github/workflows/ci.yml`.
    S3_BUCKET=ai-interviewer-agent-staging
    S3_FORCE_PATH_STYLE=true
    ```
-3. **Lock down the Data API.** Our app talks to Postgres directly (Drizzle + better-auth), **not** through Supabase's PostgREST. The auto-exposed Data API over the `public` schema is therefore pure attack surface. After migrations land (Step 5), either:
-   - Dashboard → Settings → API → **Exposed schemas** → remove `public` (preferred — we don't use the API), **or**
-   - enable deny-by-default RLS on every table.
-   Re-check with the Supabase advisor afterward.
+3. **Lock down the Data API** ✅ *(done 2026-06-14).* Our app talks to Postgres directly (Drizzle + better-auth as the `postgres` role, which bypasses RLS), **not** through Supabase's PostgREST. The auto-exposed Data API over the `public` schema is therefore pure attack surface. Done via Dashboard → Settings → API → **Exposed schemas** → removed `public`. (RLS is also enabled on all 6 tables with no policies → deny-all even if re-exposed.) Verify from outside with the anon key — `public` tables must be unreachable:
+   ```
+   ANON=<anon/publishable key from Settings → API>
+   curl -s -w '\n%{http_code}\n' \
+     "https://hdwsevhindcblvxkdlqp.supabase.co/rest/v1/users?select=id&limit=1" \
+     -H "apikey: $ANON" -H "Authorization: Bearer $ANON"
+   # expect 404 PGRST205 resolving against `graphql_public.users` (i.e. public no longer exposed),
+   # NOT a 200 with rows/[]
+   ```
+   Re-check with the Supabase advisor after any DDL.
 
 ## Step 2 — Render backend
 
@@ -74,39 +120,42 @@ Then set the environment variables (see the **Env matrix** below). The structura
 1. New Project → import the repo.
 2. **Root Directory = `apps/web`** (Vercel detects Next.js + Turborepo).
 3. Production branch = `dev` (or your chosen staging branch).
-4. Env var: `NEXT_PUBLIC_API_URL = https://<render-service>.onrender.com` (the Render backend URL).
-5. After the backend URL is known, set the backend's `BETTER_AUTH_TRUSTED_ORIGINS`, `CORS_ALLOWED_ORIGINS`, and `CANDIDATE_PUBLIC_BASE_URL` to the Vercel web origin, then redeploy the backend.
+4. Env vars (Production target): `NEXT_PUBLIC_API_URL = https://api-dev.sift-ai.space` and `NEXT_PUBLIC_USE_BE_PROXY = false`. ⚠️ `NEXT_PUBLIC_*` is **inlined at build time** — set these *before* the deploy, and **redeploy** after any change or they won't take.
+5. Set the backend's `BETTER_AUTH_URL = https://api-dev.sift-ai.space` and `BETTER_AUTH_TRUSTED_ORIGINS` / `CORS_ALLOWED_ORIGINS` / `CANDIDATE_PUBLIC_BASE_URL = https://app-dev.sift-ai.space`, plus `AUTH_COOKIE_DOMAIN = .sift-ai.space` (see Custom domains), then redeploy the backend.
 
 ## Step 4 — ElevenLabs agent + webhooks
 
-Reuse the live-validation scripts (`apps/backend/scripts/live-validation/`), pointing them at the
-Render URL instead of an ngrok tunnel. Run locally with `apps/backend/.env` populated.
+The staging agent is already provisioned: `agent_3601kv2qk3a9fdys6ey9dgdzb9mq`
+(`sift-staging-interviewer`), set in Render as `ELEVENLABS_AGENT_ID`. To create a
+fresh one, run `apps/backend/scripts/live-validation/provision-agent.mjs` once and
+copy the printed `agentId` into Render. (Boot-time `agent-config-assertion` needs
+the override allow-list flags — the provision script sets them.)
 
-1. **Provision the static agent + 3 tools** (idempotent):
-   ```
-   node --env-file=apps/backend/.env apps/backend/scripts/live-validation/provision-agent.mjs
-   ```
-   Put the printed `agentId` into Render as `ELEVENLABS_AGENT_ID`. (The boot-time
-   `agent-config-assertion` requires the override allow-list flags — the script sets them.)
-2. **Register the post-call webhook** at the Render URL (prints the `wsec_…` secret):
-   ```
-   node --env-file=apps/backend/.env apps/backend/scripts/live-validation/register-post-call-webhook.mjs https://<render-service>.onrender.com
-   ```
-   Put the printed `wsec_…` into Render as `ELEVENLABS_WEBHOOK_SECRET`, then redeploy.
-3. **Wire the tool URLs** to the Render URL (adds the `x-voice-secret` header from `ELEVENLABS_TOOL_WEBHOOK_SECRET`):
-   ```
-   node --env-file=apps/backend/.env apps/backend/scripts/live-validation/wire-webhooks.mjs https://<render-service>.onrender.com
-   ```
-   The wired endpoints are:
-   - `POST /webhooks/elevenlabs/tools/next_question`
-   - `POST /webhooks/elevenlabs/tools/score_answer`
-   - `POST /webhooks/elevenlabs/tools/take_note`
-   - `POST /webhooks/elevenlabs/post-call`
+**Wire / re-point webhooks** — one self-contained, idempotent script does the 3
+tools **and** the post-call webhook (it reads the agent and derives its tool ids):
+```
+node --env-file=apps/backend/.env apps/backend/scripts/wire-staging-webhooks.mjs https://api-dev.sift-ai.space
+```
+It re-points (with the `x-voice-secret` header from `ELEVENLABS_TOOL_WEBHOOK_SECRET`):
+- `POST /webhooks/elevenlabs/tools/{next_question,score_answer,take_note}`
+- `POST /webhooks/elevenlabs/post-call`
 
-> Ordering note: the backend boots fine with a placeholder `ELEVENLABS_WEBHOOK_SECRET`; webhooks
-> just won't verify until the real `wsec_…` from step 2 is set. So: deploy → register webhook →
-> set the secret → redeploy. Unlike local validation, **do not** run `cleanup.mjs` — this agent is
-> the staging agent, not throwaway.
+and registers + links the post-call webhook, printing `ELEVENLABS_WEBHOOK_SECRET=wsec_…`
+**only when it creates one**. Put that `wsec_…` into Render, then redeploy.
+
+> **Re-pointing to a new backend URL** (e.g. the custom-domain cutover): re-run the
+> script with the new URL. Tools re-point idempotently. The post-call webhook is
+> matched by URL, so a **new** URL mints a **fresh** `wsec_` (good). But re-running
+> against the **same** URL reuses the existing webhook and the secret is **not**
+> reshown — to force a fresh one you must delete it first, and ElevenLabs refuses to
+> delete a webhook that's **in use**: unlink it from the agent
+> (`agents.update(agentId, { platformSettings: { workspaceOverrides: { webhooks: { postCallWebhookId: null } } } })`),
+> then `DELETE /v1/workspace/webhooks/{id}`, then re-run the wire script. The old
+> `onrender.com` webhook is now orphaned in the workspace — safe to delete in the dashboard.
+>
+> Ordering note: the backend boots fine with a placeholder `ELEVENLABS_WEBHOOK_SECRET`;
+> webhooks just won't verify until the real `wsec_…` is set. Do **not** run `cleanup.mjs`
+> on this agent — it's the staging agent, not a throwaway.
 
 ## Step 5 — First deploy & migrations
 
@@ -119,8 +168,10 @@ DATABASE_URL='<session-pooler-url>' pnpm --filter backend db:migrate
 
 ## Step 6 — Smoke test
 
-1. `GET https://<render>/health` → `{ "status": "ok" }`.
-2. Recruiter sign-up + sign-in on the Vercel app (exercises `/api/auth/*` through CORS).
+> Last full pass: **2026-06-14** on the custom domain — all steps below green end-to-end (the document-extract op that previously 502'd now succeeds direct).
+
+1. `GET https://api-dev.sift-ai.space/health` → `{ "status": "ok" }`.
+2. Recruiter sign-up + sign-in on `https://app-dev.sift-ai.space` (exercises `/api/auth/*` cross-origin + the cross-subdomain cookie → land on `/dashboard`, not back on `/login`).
 3. Create an interview, upload a JD + CV (exercises Gemini extraction + **Supabase Storage** upload).
 4. Generate the candidate link, open it, start a session (exercises the candidate-session mint → ElevenLabs).
 5. Complete a short interview → confirm the post-call webhook flips the interview to `COMPLETED` and evaluation produces a report.
@@ -131,14 +182,16 @@ DATABASE_URL='<session-pooler-url>' pnpm --filter backend db:migrate
 
 | Variable | Render (backend) | Vercel (web) | Source |
 |---|:--:|:--:|---|
-| `NEXT_PUBLIC_API_URL` | | ✅ | Render backend URL |
+| `NEXT_PUBLIC_API_URL` | | ✅ | `https://api-dev.sift-ai.space` |
+| `NEXT_PUBLIC_USE_BE_PROXY` | | ✅ | `false` (direct); `true` only for self-hosted Docker |
 | `DATABASE_URL` | ✅ | | Supabase session pooler |
 | `BETTER_AUTH_SECRET` | ✅ | | `openssl rand -base64 32` |
-| `BETTER_AUTH_URL` | ✅ | | Render backend URL |
-| `BETTER_AUTH_TRUSTED_ORIGINS` | ✅ | | Vercel web origin |
-| `CORS_ALLOWED_ORIGINS` | ✅ | | Vercel web origin |
+| `BETTER_AUTH_URL` | ✅ | | `https://api-dev.sift-ai.space` |
+| `BETTER_AUTH_TRUSTED_ORIGINS` | ✅ | | `https://app-dev.sift-ai.space` |
+| `CORS_ALLOWED_ORIGINS` | ✅ | | `https://app-dev.sift-ai.space` |
+| `AUTH_COOKIE_DOMAIN` | ✅ | | `.sift-ai.space` (cross-subdomain cookie; see Custom domains) |
 | `CANDIDATE_LINK_SECRET` | ✅ | | `openssl rand -base64 32` |
-| `CANDIDATE_PUBLIC_BASE_URL` | ✅ | | Vercel web origin |
+| `CANDIDATE_PUBLIC_BASE_URL` | ✅ | | `https://app-dev.sift-ai.space` |
 | `GOOGLE_GENERATIVE_AI_API_KEY` | ✅ | | Google AI Studio |
 | `ELEVENLABS_API_KEY` / `ELEVENLABS_AGENT_ID` | ✅ | | ElevenLabs + Step 4 |
 | `ELEVENLABS_WEBHOOK_SECRET` | ✅ | | Step 4 (`wsec_…`) |
