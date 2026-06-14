@@ -2,25 +2,67 @@
   "name": "@repo/ui",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "exports": {
-    "./*": "./src/*.tsx"
+    ".": "./src/index.ts",
+    "./lib/cn": "./src/lib/cn.ts",
+    "./primitives/button": "./src/primitives/button/index.ts",
+    "./primitives/badge": "./src/primitives/badge/index.ts",
+    "./primitives/card": "./src/primitives/card/index.ts",
+    "./primitives/input": "./src/primitives/input/index.ts",
+    "./primitives/label": "./src/primitives/label/index.ts",
+    "./primitives/avatar": "./src/primitives/avatar/index.ts",
+    "./primitives/separator": "./src/primitives/separator/index.ts",
+    "./primitives/skeleton": "./src/primitives/skeleton/index.ts",
+    "./primitives/dialog": "./src/primitives/dialog/index.ts",
+    "./primitives/textarea": "./src/primitives/textarea/index.ts",
+    "./composites/soft-block-screen": "./src/composites/soft-block-screen/index.tsx",
+    "./composites/interview-status-badge": "./src/composites/interview-status-badge/index.tsx",
+    "./composites/recommendation-badge": "./src/composites/recommendation-badge/index.tsx",
+    "./composites/file-upload-field": "./src/composites/file-upload-field/index.tsx",
+    "./composites/stepper-header": "./src/composites/stepper-header/index.tsx",
+    "./composites/topic-score-row": "./src/composites/topic-score-row/index.tsx",
+    "./composites/voice-presence": "./src/composites/voice-presence/index.tsx",
+    "./composites/transcript-feed": "./src/composites/transcript-feed/index.tsx",
+    "./composites/mic-level-meter": "./src/composites/mic-level-meter/index.tsx",
+    "./composites/connection-loss-banner": "./src/composites/connection-loss-banner/index.tsx",
+    "./primitives/*": "./src/primitives/*.tsx",
+    "./composites/*": "./src/composites/*.tsx",
+    "./styles/*": "./src/styles/*"
   },
   "scripts": {
     "lint": "eslint . --max-warnings 0",
-    "generate:component": "turbo gen react-component",
-    "check-types": "tsc --noEmit"
+    "check-types": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^22.15.3",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
+    "@vitejs/plugin-react": "^4.7.0",
     "eslint": "^9.39.1",
-    "typescript": "5.9.2"
+    "jsdom": "^29.1.1",
+    "typescript": "5.9.2",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^3.2.1"
   },
   "dependencies": {
+    "@radix-ui/react-avatar": "^1.1.11",
+    "@radix-ui/react-dialog": "^1.1.6",
+    "@radix-ui/react-label": "^2.1.8",
+    "@radix-ui/react-separator": "^1.1.8",
+    "@radix-ui/react-slot": "^1.2.4",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.14.0",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "tailwind-merge": "^3.6.0"
   }
 }

@@ -1,0 +1,98 @@
+# Render Blueprint — staging backend (Fastify). Apply via Render Dashboard →
+# Blueprints → New, pointed at this repo. Auto-deploys on push to `dev`.
+#
+# Free tier has no Pre-Deploy Command, so DB migrations run at the END of the
+# build (fail-fast: a failed migration aborts the deploy). On a paid plan, move
+# the `drizzle-kit migrate` line to a `preDeployCommand` so it runs after the
+# build, just before traffic switches over.
+services:
+  - type: web
+    name: ai-interviewer-agent-backend
+    runtime: node
+    plan: free
+    region: singapore # closest free region to Supabase ap-northeast-1 (Tokyo)
+    branch: dev
+    rootDir: .
+    autoDeploy: true
+    healthCheckPath: /health
+    buildCommand: >-
+      corepack enable &&
+      pnpm install --frozen-lockfile &&
+      pnpm turbo run build --filter=backend &&
+      pnpm --filter backend exec drizzle-kit migrate
+    startCommand: pnpm --filter backend start
+    envVars:
+      # ── structural (committed) ──
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: TRUST_PROXY # one proxy hop → req.ip = real client (ADR-037)
+        value: "1"
+      - key: FILE_STORAGE_DRIVER # object storage in deployed envs (ADR-036)
+        value: s3
+      - key: S3_FORCE_PATH_STYLE # required for Supabase Storage
+        value: "true"
+      # legacy Deepgram/EL-voice config — non-secret, required at boot until the
+      # sandbox voice path is removed (kept per the "hide vars" decision).
+      - key: DEEPGRAM_MODEL
+        value: nova-3
+      - key: DEEPGRAM_LANGUAGE
+        value: en-US
+      - key: DEEPGRAM_SAMPLE_RATE
+        value: "16000"
+      - key: DEEPGRAM_ENCODING
+        value: linear16
+      - key: ELEVENLABS_VOICE_ID
+        value: EXAVITQu4vr4xnSDxMaL
+      - key: ELEVENLABS_MODEL_ID
+        value: eleven_turbo_v2_5
+      - key: ELEVENLABS_OUTPUT_FORMAT
+        value: mp3_44100_128
+
+      # ── secrets: set in the Render dashboard (sync:false → never committed) ──
+      - key: DATABASE_URL # Supabase SESSION pooler (IPv4, :5432) — runtime + migrate
+        sync: false
+      - key: BETTER_AUTH_SECRET
+        sync: false
+      - key: BETTER_AUTH_URL # https://<this-service>.onrender.com
+        sync: false
+      - key: BETTER_AUTH_TRUSTED_ORIGINS # the Vercel web origin
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS # the Vercel web origin
+        sync: false
+      - key: CANDIDATE_LINK_SECRET
+        sync: false
+      - key: CANDIDATE_PUBLIC_BASE_URL # the Vercel web origin (candidate links target this)
+        sync: false
+      - key: GOOGLE_GENERATIVE_AI_API_KEY
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: ELEVENLABS_AGENT_ID
+        sync: false
+      - key: ELEVENLABS_WEBHOOK_SECRET
+        sync: false
+      - key: ELEVENLABS_TOOL_WEBHOOK_SECRET
+        sync: false
+      - key: LANGFUSE_PUBLIC_KEY
+        sync: false
+      - key: LANGFUSE_SECRET_KEY
+        sync: false
+      - key: LANGFUSE_BASE_URL
+        sync: false
+      # Supabase Storage (S3-compatible) — Storage → S3 access keys
+      - key: S3_ENDPOINT # https://<ref>.storage.supabase.co/storage/v1/s3
+        sync: false
+      - key: S3_REGION # e.g. ap-northeast-1
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: DEEPGRAM_API_KEY # legacy boot requirement; any non-empty value (sandbox path is dead)
+        sync: false

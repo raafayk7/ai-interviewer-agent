@@ -1,7 +1,29 @@
 {
+  "permissions": {
+    "allow": [
+      "Write(.claude/plan/**)",
+      "Edit(.claude/plan/**)",
+      "Write(apps/backend/**)",
+      "Edit(apps/backend/**)",
+      "Write(packages/**)",
+      "Edit(packages/**)",
+      "Write(docs/**)",
+      "Edit(docs/**)"
+    ]
+  },
   "enabledPlugins": {
     "ui-ux-pro-max@ui-ux-pro-max-skill": true,
     "frontend-design@claude-plugins-official": true,
-    "skill-creator@claude-plugins-official": true
+    "skill-creator@claude-plugins-official": true,
+    "adr-kit@rvdbreemen-adr-kit": true,
+    "playwright@claude-plugins-official": true
+  },
+  "extraKnownMarketplaces": {
+    "rvdbreemen-adr-kit": {
+      "source": {
+        "source": "github",
+        "repo": "rvdbreemen/adr-kit"
+      }
+    }
   }
 }

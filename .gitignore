@@ -12,6 +12,9 @@ node_modules
 .env.test.local
 .env.production.local
 
+# Live-validation runtime artifacts (hold the webhook HMAC secret + candidate tokens)
+apps/backend/scripts/live-validation/.artifacts.json
+
 # Testing
 coverage
 
@@ -20,6 +23,9 @@ coverage
 
 # Vercel
 .vercel
+
+# Claude Code ephemeral worktrees
+.claude/worktrees/
 
 # Build Outputs
 .next/
@@ -39,3 +45,9 @@ yarn-error.log*
 
 reference-agents-backend/
 reference-skills-backend/
+
+local-storage/
+
+# Playwright artifacts
+apps/web/test-results/
+apps/web/playwright-report/

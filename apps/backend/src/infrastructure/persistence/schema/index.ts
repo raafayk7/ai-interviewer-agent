@@ -1,4 +1,3 @@
-// Drizzle schema definitions
-// Export all table schemas from this barrel file.
-// Example:
-// export { campaigns } from "./campaigns.js";
+export * from "./auth.js";
+export * from "./interviews.js";
+export * from "./reports.js";

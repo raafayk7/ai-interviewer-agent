@@ -1,50 +1,269 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@source "../../../packages/ui/src/**/*.{ts,tsx}";
+
+@variant pointer-coarse (@media (hover: none) and (pointer: coarse));
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Sift design tokens — see docs/DESIGN.md §2 (palette) + §4 (radius) + §3 (type)
+   Token discipline is enforced by ADR-025: no raw hex literals, no Tailwind
+   color scales in component code. Semantic tokens only.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Dark — canonical. No data-theme attribute = dark. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Surfaces — warm-neutral charcoal (hue 60°, v2 refresh ADR-028) */
+  --background:                   oklch(0.155 0.005 60);
+  --foreground:                   oklch(0.965 0.004 60);
+  --card:                         oklch(0.195 0.005 60);
+  --card-foreground:              oklch(0.965 0.004 60);
+  --popover:                      oklch(0.215 0.005 60);
+  --popover-foreground:           oklch(0.965 0.004 60);
+
+  /* Primary — warm cream (was steel blue 250°; see ADR-028) */
+  --primary:                      oklch(0.935 0.020 75);
+  --primary-foreground:           oklch(0.180 0.008 60);
+
+  /* Secondary */
+  --secondary:                    oklch(0.285 0.008 60);
+  --secondary-foreground:         oklch(0.940 0.005 60);
+
+  /* Muted */
+  --muted:                        oklch(0.265 0.005 60);
+  --muted-foreground:             oklch(0.700 0.008 60);
+
+  /* Accent — the orb; slight chroma bump in v2 (ADR-025 + ADR-028) */
+  --accent:                       oklch(0.795 0.150 65);
+  --accent-foreground:            oklch(0.180 0.020 65);
+
+  /* Recommendation / outcome semantics — bound to ADR-015 rubric */
+  --positive:                     oklch(0.730 0.080 155);
+  --positive-foreground:          oklch(0.180 0.020 155);
+  --attention-warning:            oklch(0.770 0.095 70);
+  --attention-warning-foreground: oklch(0.180 0.020 70);
+  --negative:                     oklch(0.620 0.110 25);
+  --negative-foreground:          oklch(0.985 0.005 25);
+
+  /* Destructive — irreversible actions only (ADR-025 fenced usage) */
+  --destructive:                  oklch(0.605 0.220 25);
+  --destructive-foreground:       oklch(0.985 0.005 25);
+
+  /* Borders / inputs / focus ring — focus ring now warm (ADR-028) */
+  --border:                       oklch(0.285 0.005 60);
+  --input:                        oklch(0.225 0.005 60);
+  --ring:                         oklch(0.650 0.080 70);
+
+  /* Voice / AI semantic tokens — candidate voice shifts to petrol 210° (ADR-028) */
+  --voice-active:                 oklch(0.700 0.110 210);
+  --voice-listening:              oklch(0.540 0.070 210);
+  --ai-thinking:                  oklch(0.720 0.110 65);
+  --transcript-candidate:         oklch(0.770 0.080 210);
+  --transcript-ai:                oklch(0.830 0.110 65);
+
+  /* Orb halo — used only inside the VoicePresence composite (ADR-026) */
+  --orb-core:                     oklch(0.880 0.150 65);
+  --orb-halo:                     oklch(0.700 0.190 65 / 0.50);
+
+  /* Radius tiers — DESIGN.md §4 hard rule */
+  --radius-pill:                  9999px;
+  --radius-md:                    12px;
+  --radius-sm:                    8px;
+  --radius-xs:                    4px;
+
+  /* Font family fallback chains. Instrument Serif + Inter + Geist Mono via next/font. */
+  --font-switzer:                 "Instrument Serif", "Times New Roman", Georgia, serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Light — always shipped at parity for accessibility (ADR-025; hue-shifted to 60° in v2, ADR-028) */
+:root[data-theme="light"] {
+  --background:                   oklch(0.992 0.003 60);
+  --foreground:                   oklch(0.220 0.008 60);
+  --card:                         oklch(1 0 0);
+  --card-foreground:              oklch(0.220 0.008 60);
+  --popover:                      oklch(1 0 0);
+  --popover-foreground:           oklch(0.220 0.008 60);
+
+  --primary:                      oklch(0.250 0.010 60);
+  --primary-foreground:           oklch(0.985 0.005 60);
+
+  --secondary:                    oklch(0.945 0.005 60);
+  --secondary-foreground:         oklch(0.260 0.008 60);
+
+  --muted:                        oklch(0.960 0.003 60);
+  --muted-foreground:             oklch(0.470 0.008 60);
+
+  --accent:                       oklch(0.685 0.140 65);
+  --accent-foreground:            oklch(0.985 0.005 65);
+
+  --positive:                     oklch(0.560 0.135 165);
+  --positive-foreground:          oklch(0.985 0.005 165);
+  --attention-warning:            oklch(0.650 0.100 75);
+  --attention-warning-foreground: oklch(0.985 0.005 75);
+  --negative:                     oklch(0.520 0.155 25);
+  --negative-foreground:          oklch(0.985 0.005 25);
+
+  --destructive:                  oklch(0.555 0.225 25);
+  --destructive-foreground:       oklch(0.985 0.005 25);
+
+  --border:                       oklch(0.915 0.003 60);
+  --input:                        oklch(0.945 0.003 60);
+  --ring:                         oklch(0.500 0.080 70);
+
+  --voice-active:                 oklch(0.510 0.155 210);
+  --voice-listening:              oklch(0.620 0.080 210);
+  --ai-thinking:                  oklch(0.610 0.120 65);
+  --transcript-candidate:         oklch(0.380 0.090 210);
+  --transcript-ai:                oklch(0.450 0.140 65);
+
+  --orb-core:                     oklch(0.770 0.150 65);
+  --orb-halo:                     oklch(0.685 0.190 65 / 0.45);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Tailwind v4 @theme inline — exposes every semantic token as a utility:
+   bg-primary, text-positive, rounded-pill, font-heading, etc.
+   ───────────────────────────────────────────────────────────────────────── */
+
+@theme inline {
+  /* Colors */
+  --color-background:                   var(--background);
+  --color-foreground:                   var(--foreground);
+  --color-card:                         var(--card);
+  --color-card-foreground:              var(--card-foreground);
+  --color-popover:                      var(--popover);
+  --color-popover-foreground:           var(--popover-foreground);
+  --color-primary:                      var(--primary);
+  --color-primary-foreground:           var(--primary-foreground);
+  --color-secondary:                    var(--secondary);
+  --color-secondary-foreground:         var(--secondary-foreground);
+  --color-muted:                        var(--muted);
+  --color-muted-foreground:             var(--muted-foreground);
+  --color-accent:                       var(--accent);
+  --color-accent-foreground:            var(--accent-foreground);
+  --color-positive:                     var(--positive);
+  --color-positive-foreground:          var(--positive-foreground);
+  --color-attention-warning:            var(--attention-warning);
+  --color-attention-warning-foreground: var(--attention-warning-foreground);
+  --color-negative:                     var(--negative);
+  --color-negative-foreground:          var(--negative-foreground);
+  --color-destructive:                  var(--destructive);
+  --color-destructive-foreground:       var(--destructive-foreground);
+  --color-border:                       var(--border);
+  --color-input:                        var(--input);
+  --color-ring:                         var(--ring);
+  --color-voice-active:                 var(--voice-active);
+  --color-voice-listening:              var(--voice-listening);
+  --color-ai-thinking:                  var(--ai-thinking);
+  --color-transcript-candidate:         var(--transcript-candidate);
+  --color-transcript-ai:                var(--transcript-ai);
+  --color-orb-core:                     var(--orb-core);
+  --color-orb-halo:                     var(--orb-halo);
+
+  /* Radius */
+  --radius-pill:                        var(--radius-pill);
+  --radius-md:                          var(--radius-md);
+  --radius-sm:                          var(--radius-sm);
+  --radius-xs:                          var(--radius-xs);
+
+  /* Fonts — DESIGN.md §3. The CSS-var names below must match what
+     apps/web/app/layout.tsx assigns via next/font's `variable` option. */
+  --font-sans:                          var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-heading:                       var(--font-switzer);
+  --font-mono:                          var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Orb halo pulse — landing page only; motion-safe guard baked in via Tailwind class */
+@keyframes orbHaloPulse {
+  0%, 100% { box-shadow: 0 0 24px var(--orb-halo), 0 0 0 var(--orb-halo); opacity: 0.92; }
+  50%      { box-shadow: 0 0 56px var(--orb-halo), 0 0 96px var(--orb-halo); opacity: 1; }
+}
+
+/* Skeleton shimmer — used by the Skeleton primitive in @repo/ui */
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@utility animate-shimmer {
+  background-image: linear-gradient(
+    90deg,
+    var(--muted) 25%,
+    color-mix(in oklch, var(--muted) 70%, var(--muted-foreground) 30%) 50%,
+    var(--muted) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    background-image: none;
+    background-color: var(--muted);
   }
 }
 
-html,
-body {
-  max-width: 100vw;
-  overflow-x: hidden;
-}
-
-body {
-  color: var(--foreground);
-  background: var(--background);
-}
-
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-}
-
-.imgDark {
-  display: none;
-}
-
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
+@layer base {
+  * {
+    border-color: var(--border);
   }
-
-  .imgLight {
-    display: none;
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
   }
-  .imgDark {
-    display: unset;
+  /* Browser autofill: override the yellow tint to match our input token */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px var(--input) inset;
+    -webkit-text-fill-color: var(--foreground);
+    caret-color: var(--foreground);
+    transition: background-color 600000s 0s, color 600000s 0s;
+  }
+  /* Instrument Serif type scale — DESIGN.md §3 */
+  h1, .h-display {
+    font-family: var(--font-heading);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 2.25rem;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  h2, .h-section {
+    font-family: var(--font-heading);
+    font-style: italic;
+    font-weight: 400;
+    font-size: 1.75rem;
+    line-height: 1.1;
+    letter-spacing: -0.012em;
+  }
+  h3 {
+    font-family: var(--font-heading);
+    font-weight: 400;
+    font-size: 1.375rem;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+  }
+  h4 {
+    font-family: var(--font-heading);
+    font-weight: 400;
+    font-size: 1.125rem;
+    line-height: 1.35;
+    letter-spacing: -0.005em;
+  }
+  h5 {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 1rem;
+    line-height: 1.4;
+  }
+  h6 {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    letter-spacing: 0.005em;
   }
 }
