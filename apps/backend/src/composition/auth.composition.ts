@@ -46,6 +46,10 @@ export function buildAuthDeps(options: AuthCompositionOptions = {}): AuthDeps {
       baseUrl: betterAuthUrl,
       db,
       trustedOrigins,
+      // Frontend (Vercel) and backend (Render) are different registrable domains
+      // in deployed envs → the session cookie must be SameSite=None to survive
+      // cross-site requests. Gated on production so local dev keeps Lax over http.
+      crossSiteCookies: env["NODE_ENV"] === "production",
     }),
     candidateLink: candidateLink.unwrap(),
   };
