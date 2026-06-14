@@ -10,11 +10,13 @@ import {
   type FileRef,
 } from "@/types";
 
-// Client → same-origin `/be` proxy so the session cookie is sent first-party
-// (both upload + extract are authenticated); server → backend directly. Mirrors
-// _request.ts — every authenticated path must route through the proxy.
+// Mirrors _request.ts: direct to NEXT_PUBLIC_API_URL by default (same-site, so the
+// session cookie is first-party AND extract — a slow gemini op — bypasses Vercel's
+// ~30s edge-rewrite timeout). NEXT_PUBLIC_USE_BE_PROXY=true routes client calls
+// through the same-origin `/be` proxy; the server always calls directly.
+const USE_PROXY = env.NEXT_PUBLIC_USE_BE_PROXY === "true";
 const BASE =
-  typeof window === "undefined"
+  typeof window === "undefined" || !USE_PROXY
     ? env.NEXT_PUBLIC_API_URL
     : `${window.location.origin}/be`;
 

@@ -4,13 +4,16 @@ import { env } from "@/lib/env";
 import { HttpErrorBodySchema } from "@/types";
 import type { ServiceError } from "./errors";
 
-// On the client, route through the same-origin `/be` proxy (next.config rewrite)
-// so the session cookie is sent FIRST-PARTY: *.vercel.app and *.onrender.com are
-// different sites, and browsers (Chrome) block third-party cookies. On the server
-// there's no cookie-origin problem (the cookie is forwarded as a header), so call
-// the backend directly. Mirrors auth-client.ts, which already does this for auth.
+// Direct by default: frontend (app-dev) and backend (api-dev) are same-site
+// under sift-ai.space, so the session cookie is first-party with SameSite=Lax and
+// calls go straight to NEXT_PUBLIC_API_URL — avoiding the ~30s Vercel edge-rewrite
+// timeout that 502s the slow gemini ops. When NEXT_PUBLIC_USE_BE_PROXY=true (e.g.
+// self-hosted Docker, or a cross-site host where third-party cookies are blocked),
+// client calls route through the same-origin `/be` proxy (next.config rewrite).
+// The server always calls directly — no cookie-origin problem there.
+const USE_PROXY = env.NEXT_PUBLIC_USE_BE_PROXY === "true";
 const BASE =
-  typeof window === "undefined"
+  typeof window === "undefined" || !USE_PROXY
     ? env.NEXT_PUBLIC_API_URL
     : `${window.location.origin}/be`;
 
