@@ -15,9 +15,12 @@ services:
     rootDir: .
     autoDeploy: true
     healthCheckPath: /health
+    # NODE_ENV=development scopes ONLY the install: with NODE_ENV=production (set
+    # below, for runtime) pnpm omits devDependencies, but the build needs turbo,
+    # typescript, and drizzle-kit. The build + runtime still run as production.
     buildCommand: >-
       corepack enable &&
-      pnpm install --frozen-lockfile &&
+      NODE_ENV=development pnpm install --frozen-lockfile &&
       pnpm turbo run build --filter=backend &&
       pnpm --filter backend exec drizzle-kit migrate
     startCommand: pnpm --filter backend start
