@@ -30,7 +30,7 @@ jobs:
     # The S3 (MinIO) integration tests skip cleanly when S3_TEST_ENDPOINT is unset.
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:17-alpine # matches Supabase staging (PG 17)
         env:
           POSTGRES_USER: test
           POSTGRES_PASSWORD: test

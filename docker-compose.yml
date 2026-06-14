@@ -59,7 +59,7 @@ services:
   #   postgres://test:test@localhost:54329/ai_interviewer_test
   postgres-test:
     profiles: ["test"]
-    image: postgres:16-alpine
+    image: postgres:17-alpine # matches Supabase staging (PG 17)
     container_name: ai_interviewer_test_pg
     environment:
       POSTGRES_USER: test
