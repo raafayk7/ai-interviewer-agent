@@ -4,7 +4,15 @@ import { env } from "@/lib/env";
 import { HttpErrorBodySchema } from "@/types";
 import type { ServiceError } from "./errors";
 
-const BASE = env.NEXT_PUBLIC_API_URL;
+// On the client, route through the same-origin `/be` proxy (next.config rewrite)
+// so the session cookie is sent FIRST-PARTY: *.vercel.app and *.onrender.com are
+// different sites, and browsers (Chrome) block third-party cookies. On the server
+// there's no cookie-origin problem (the cookie is forwarded as a header), so call
+// the backend directly. Mirrors auth-client.ts, which already does this for auth.
+const BASE =
+  typeof window === "undefined"
+    ? env.NEXT_PUBLIC_API_URL
+    : `${window.location.origin}/be`;
 
 export async function safeJson(res: Response): Promise<unknown> {
   try {
